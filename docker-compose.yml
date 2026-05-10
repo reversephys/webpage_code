@@ -20,8 +20,8 @@ services:
     ports:
       - "8090:8090"
     volumes:
-      - ../Contents:/app/Contents
-      - ../pb_data:/app/pb_data
+      - ..:/app
+
       - ~/.ssh:/root/.ssh:ro
     environment:
       # Use internal localhost for server-side Next.js data fetching

@@ -32,7 +32,7 @@ fi
 # Task 2: Auto Backup Contents
 # ==========================================
 echo "$(date): Starting Contents backup..."
-cd /app/Contents
+cd /app
 
 # Set git identity just for this container
 git config --global user.name "Docker Auto Backup"
@@ -41,7 +41,7 @@ git config --global user.email "docker@physicallab.com"
 # Add trusting directory inside docker
 git config --global --add safe.directory /app/Contents
 
-git add .
+git add Contents/ pb_data/data.db
 # Check if there are changes to commit
 if ! git diff-index --quiet HEAD; then
     git commit -m "Auto backup: $(date)"
