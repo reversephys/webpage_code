@@ -1,0 +1,35 @@
+version: "3.8"
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+  web:
+    build: .
+    container_name: reversephys-web
+    ports:
+      - "8090:8090"
+    volumes:
+      - ../Contents:/app/Contents
+      - ../pb_data:/app/pb_data
+      - ~/.ssh:/root/.ssh:ro
+    environment:
+      # Use internal localhost for server-side Next.js data fetching
+      - NEXT_PUBLIC_POCKETBASE_URL=http://127.0.0.1:8090
+      # Ensure Next.js binds to all network interfaces so Caddy can proxy to it
+      - HOSTNAME=0.0.0.0
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

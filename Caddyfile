@@ -1,0 +1,9 @@
+# phylab.space - Caddy가 자동으로 SSL 발급 + HTTP→HTTPS 리디렉트 처리
+phylab.space {
+    reverse_proxy web:3000
+}
+
+# localhost는 HTTP 전용 (개발/내부 접근용)
+http://localhost {
+    reverse_proxy web:3000
+}
