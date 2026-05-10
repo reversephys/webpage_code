@@ -21,6 +21,7 @@ services:
     volumes:
       - ..:/app
       - /app/code/node_modules
+      - /app/code/.next
       - ~/.ssh:/root/.ssh:ro
     environment:
       # Use internal localhost for server-side Next.js data fetching
