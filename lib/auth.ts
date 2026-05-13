@@ -44,10 +44,12 @@ export async function registerUser(username: string, password: string, passwordC
     return data;
 }
 
-export function logoutUser() {
+export async function logoutUser() {
     pb.authStore.clear();
-    if (typeof document !== 'undefined') {
-        document.cookie = "pb_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+        // Server may be unreachable; in-memory store is already cleared.
     }
 }
 

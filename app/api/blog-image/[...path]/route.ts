@@ -10,7 +10,6 @@ const MIME_TYPES: Record<string, string> = {
     ".jpeg": "image/jpeg",
     ".gif": "image/gif",
     ".webp": "image/webp",
-    ".svg": "image/svg+xml",
 };
 
 export async function GET(
@@ -31,6 +30,7 @@ export async function GET(
     const folders = fs.readdirSync(CONTENTS_DIR, { withFileTypes: true });
     const matchingFolder = folders.find((f) => {
         if (!f.isDirectory()) return false;
+        if (f.name.startsWith("_")) return false;
         const mdPath = path.join(CONTENTS_DIR, f.name, `${slug}.md`);
         return fs.existsSync(mdPath);
     })?.name;
@@ -58,7 +58,8 @@ export async function GET(
     return new NextResponse(fileBuffer, {
         headers: {
             "Content-Type": contentType,
-            "Cache-Control": "public, max-age=31536000, immutable",
+            "Cache-Control": "public, max-age=3600",
+            "X-Content-Type-Options": "nosniff",
         },
     });
 }

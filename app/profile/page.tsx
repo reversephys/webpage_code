@@ -603,8 +603,8 @@ export default function ProfilePage() {
 
                     {/* Sign Out */}
                     <button
-                        onClick={() => {
-                            logout();
+                        onClick={async () => {
+                            await logout();
                             router.push("/");
                         }}
                         className="w-full mt-4 py-3 border border-red-500 text-red-500 hover:bg-red-500 hover:text-white font-sans uppercase tracking-widest text-sm transition-colors rounded"

@@ -30,13 +30,24 @@ export async function GET(
         return new NextResponse("Image not found", { status: 404 });
     }
 
+    const ALLOWED_MIME = new Set([
+        "image/png",
+        "image/jpeg",
+        "image/gif",
+        "image/webp",
+    ]);
+    const detected = mime.getType(filePath);
+    if (!detected || !ALLOWED_MIME.has(detected)) {
+        return new NextResponse("Unsupported image type", { status: 415 });
+    }
+
     const fileBuffer = fs.readFileSync(filePath);
-    const contentType = mime.getType(filePath) || "application/octet-stream";
 
     return new NextResponse(fileBuffer, {
         headers: {
-            "Content-Type": contentType,
-            "Cache-Control": "public, max-age=31536000, immutable",
+            "Content-Type": detected,
+            "Cache-Control": "public, max-age=3600",
+            "X-Content-Type-Options": "nosniff",
         },
     });
 }

@@ -4,6 +4,7 @@ import path from "path";
 import crypto from "crypto";
 import PocketBase from "pocketbase";
 import { verifyAuth, unauthorizedResponse } from "@/lib/auth-server";
+import { getValidatedExt, isAllowedImageBuffer } from "@/lib/image-validation";
 
 const CONTENTS_DIR = path.join(process.cwd(), "..", "Contents", "BLOG");
 
@@ -94,13 +95,25 @@ export async function POST(request: NextRequest) {
         const imageRenameMap: Record<string, string> = {};
 
         for (const file of imageFiles) {
-            const ext = path.extname(file.name).toLowerCase() || ".png";
-            const uuid = generateUUID();
-            const newFilename = `${uuid}${ext}`;
-
-            imageRenameMap[file.name] = newFilename;
+            const ext = getValidatedExt(file.name);
+            if (!ext) {
+                return NextResponse.json(
+                    { error: `Unsupported image type: ${file.name}` },
+                    { status: 400 }
+                );
+            }
 
             const buffer = Buffer.from(await file.arrayBuffer());
+            if (!(await isAllowedImageBuffer(buffer))) {
+                return NextResponse.json(
+                    { error: `Invalid image content: ${file.name}` },
+                    { status: 400 }
+                );
+            }
+
+            const uuid = generateUUID();
+            const newFilename = `${uuid}${ext}`;
+            imageRenameMap[file.name] = newFilename;
             fs.writeFileSync(path.join(folderPath, "images", newFilename), buffer);
         }
 

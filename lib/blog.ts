@@ -116,7 +116,7 @@ export async function getAllPosts(): Promise<BlogPost[]> {
     if (!fs.existsSync(CONTENTS_DIR)) return [];
 
     const folders = fs.readdirSync(CONTENTS_DIR, { withFileTypes: true })
-        .filter((d) => d.isDirectory());
+        .filter((d) => d.isDirectory() && !d.name.startsWith("_"));
 
     const postMap = new Map<string, BlogPost>();
 
@@ -184,7 +184,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
     if (!fs.existsSync(CONTENTS_DIR)) return null;
 
     const folders = fs.readdirSync(CONTENTS_DIR, { withFileTypes: true })
-        .filter((d) => d.isDirectory());
+        .filter((d) => d.isDirectory() && !d.name.startsWith("_"));
 
     for (const folder of folders) {
         const parsed = parseFolderName(folder.name);
@@ -248,7 +248,7 @@ export function getPostFolderName(slug: string): string | null {
     if (!fs.existsSync(CONTENTS_DIR)) return null;
 
     const folders = fs.readdirSync(CONTENTS_DIR, { withFileTypes: true })
-        .filter((d) => d.isDirectory());
+        .filter((d) => d.isDirectory() && !d.name.startsWith("_"));
 
     for (const folder of folders) {
         const parsed = parseFolderName(folder.name);
