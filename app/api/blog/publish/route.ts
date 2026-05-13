@@ -87,12 +87,10 @@ export async function POST(request: NextRequest) {
         const folderName = `${timestamp}_${userId}_${sanitizedTag}_${sanitizedTitle}`;
         const folderPath = path.join(CONTENTS_DIR, folderName);
 
-        // Create directories
-        fs.mkdirSync(folderPath, { recursive: true });
-        fs.mkdirSync(path.join(folderPath, "images"), { recursive: true });
-
-        // Process images: save with UUID names and build rename mapping
+        // Validate every image before touching the filesystem so rejected
+        // uploads don't leave empty folders behind.
         const imageRenameMap: Record<string, string> = {};
+        const preparedImages: Array<{ buffer: Buffer; newFilename: string }> = [];
 
         for (const file of imageFiles) {
             const ext = getValidatedExt(file.name);
@@ -111,9 +109,16 @@ export async function POST(request: NextRequest) {
                 );
             }
 
-            const uuid = generateUUID();
-            const newFilename = `${uuid}${ext}`;
+            const newFilename = `${generateUUID()}${ext}`;
             imageRenameMap[file.name] = newFilename;
+            preparedImages.push({ buffer, newFilename });
+        }
+
+        // Create directories now that all images are known to be valid.
+        fs.mkdirSync(folderPath, { recursive: true });
+        fs.mkdirSync(path.join(folderPath, "images"), { recursive: true });
+
+        for (const { buffer, newFilename } of preparedImages) {
             fs.writeFileSync(path.join(folderPath, "images", newFilename), buffer);
         }
 
