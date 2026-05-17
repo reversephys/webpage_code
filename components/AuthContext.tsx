@@ -8,7 +8,7 @@ interface AuthContextType {
     user: UserRecord | null;
     login: (username: string, password: string) => Promise<void>;
     register: (username: string, password: string, passwordConfirm: string, name: string) => Promise<void>;
-    logout: () => void;
+    logout: () => Promise<void>;
     loading: boolean;
 }
 
@@ -19,28 +19,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Restore session from cookie (pb_auth) if pb.authStore is empty
-        if (!pb.authStore.isValid && typeof document !== "undefined") {
-            const cookieToken = document.cookie
-                .split("; ")
-                .find(row => row.startsWith("pb_auth="))
-                ?.split("=")[1];
+        let cancelled = false;
 
-            if (cookieToken) {
-                pb.authStore.save(cookieToken, null);
+        (async () => {
+            // Restore session via server route since pb_auth is httpOnly.
+            if (!pb.authStore.isValid) {
+                try {
+                    const res = await fetch("/api/auth/token");
+                    if (res.ok) {
+                        const { token } = await res.json();
+                        if (token && !cancelled) {
+                            pb.authStore.save(token, null);
+                        }
+                    }
+                } catch {
+                    // Ignore — user simply isn't logged in.
+                }
             }
-        }
 
-        const currentUser = getCurrentUser();
-        setUser(currentUser);
-        setLoading(false);
+            if (!cancelled) {
+                setUser(getCurrentUser());
+                setLoading(false);
+            }
+        })();
 
-        // Listen for auth changes
         const unsubscribe = pb.authStore.onChange(() => {
             setUser(getCurrentUser());
         });
 
         return () => {
+            cancelled = true;
             unsubscribe();
         };
     }, []);
@@ -55,8 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(getCurrentUser());
     };
 
-    const logout = () => {
-        logoutUser();
+    const logout = async () => {
+        await logoutUser();
         setUser(null);
     };
 

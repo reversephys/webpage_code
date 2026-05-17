@@ -4,6 +4,7 @@ import path from "path";
 import crypto from "crypto";
 import PocketBase from "pocketbase";
 import { verifyAuth, unauthorizedResponse } from "@/lib/auth-server";
+import { getValidatedExt, isAllowedImageBuffer } from "@/lib/image-validation";
 
 const CONTENTS_DIR = path.join(process.cwd(), "..", "Contents", "BLOG");
 
@@ -86,21 +87,38 @@ export async function POST(request: NextRequest) {
         const folderName = `${timestamp}_${userId}_${sanitizedTag}_${sanitizedTitle}`;
         const folderPath = path.join(CONTENTS_DIR, folderName);
 
-        // Create directories
+        // Validate every image before touching the filesystem so rejected
+        // uploads don't leave empty folders behind.
+        const imageRenameMap: Record<string, string> = {};
+        const preparedImages: Array<{ buffer: Buffer; newFilename: string }> = [];
+
+        for (const file of imageFiles) {
+            const ext = getValidatedExt(file.name);
+            if (!ext) {
+                return NextResponse.json(
+                    { error: `Unsupported image type: ${file.name}` },
+                    { status: 400 }
+                );
+            }
+
+            const buffer = Buffer.from(await file.arrayBuffer());
+            if (!(await isAllowedImageBuffer(buffer))) {
+                return NextResponse.json(
+                    { error: `Invalid image content: ${file.name}` },
+                    { status: 400 }
+                );
+            }
+
+            const newFilename = `${generateUUID()}${ext}`;
+            imageRenameMap[file.name] = newFilename;
+            preparedImages.push({ buffer, newFilename });
+        }
+
+        // Create directories now that all images are known to be valid.
         fs.mkdirSync(folderPath, { recursive: true });
         fs.mkdirSync(path.join(folderPath, "images"), { recursive: true });
 
-        // Process images: save with UUID names and build rename mapping
-        const imageRenameMap: Record<string, string> = {};
-
-        for (const file of imageFiles) {
-            const ext = path.extname(file.name).toLowerCase() || ".png";
-            const uuid = generateUUID();
-            const newFilename = `${uuid}${ext}`;
-
-            imageRenameMap[file.name] = newFilename;
-
-            const buffer = Buffer.from(await file.arrayBuffer());
+        for (const { buffer, newFilename } of preparedImages) {
             fs.writeFileSync(path.join(folderPath, "images", newFilename), buffer);
         }
 

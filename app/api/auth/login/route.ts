@@ -26,8 +26,15 @@ export async function POST(request: NextRequest) {
             record: authData.record,
         });
 
-        // Set token in a cookie for Server Components to read
-        response.cookies.set("pb_auth", authData.token, { path: "/" });
+        // Set token in an httpOnly cookie for Server Components to read.
+        // Client code retrieves the token via /api/auth/token when needed.
+        response.cookies.set("pb_auth", authData.token, {
+            path: "/",
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 60 * 60 * 24 * 7,
+        });
 
         return response;
     } catch (error: unknown) {

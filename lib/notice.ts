@@ -93,7 +93,7 @@ function findThumbnail(folderPath: string, slug: string): string | null {
 
     const files = fs.readdirSync(imagesDir);
     const imageFile = files.find((f) =>
-        /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(f)
+        /\.(png|jpg|jpeg|gif|webp)$/i.test(f)
     );
 
     if (!imageFile) return null;
@@ -107,7 +107,7 @@ export async function getAllPosts(): Promise<NoticePost[]> {
     if (!fs.existsSync(CONTENTS_DIR)) return [];
 
     const folders = fs.readdirSync(CONTENTS_DIR, { withFileTypes: true })
-        .filter((d) => d.isDirectory());
+        .filter((d) => d.isDirectory() && !d.name.startsWith("_"));
 
     const postMap = new Map<string, NoticePost>();
     const slugs: string[] = [];
@@ -174,7 +174,7 @@ export async function getPostBySlug(slug: string): Promise<NoticePost | null> {
     if (!fs.existsSync(CONTENTS_DIR)) return null;
 
     const folders = fs.readdirSync(CONTENTS_DIR, { withFileTypes: true })
-        .filter((d) => d.isDirectory());
+        .filter((d) => d.isDirectory() && !d.name.startsWith("_"));
 
     for (const folder of folders) {
         const parsed = parseFolderName(folder.name);
@@ -237,7 +237,7 @@ export function getPostFolderName(slug: string): string | null {
     if (!fs.existsSync(CONTENTS_DIR)) return null;
 
     const folders = fs.readdirSync(CONTENTS_DIR, { withFileTypes: true })
-        .filter((d) => d.isDirectory());
+        .filter((d) => d.isDirectory() && !d.name.startsWith("_"));
 
     for (const folder of folders) {
         const parsed = parseFolderName(folder.name);
@@ -261,7 +261,7 @@ export function getPostImages(slug: string): string[] {
     if (!fs.existsSync(imagesDir)) return [];
 
     return fs.readdirSync(imagesDir)
-        .filter((f) => /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(f));
+        .filter((f) => /\.(png|jpg|jpeg|gif|webp)$/i.test(f));
 }
 
 export { CONTENTS_DIR };

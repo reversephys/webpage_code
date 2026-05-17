@@ -5,6 +5,7 @@ import crypto from "crypto";
 import PocketBase from "pocketbase";
 import { CONTENTS_DIR } from "@/lib/notice";
 import { verifyAuth, unauthorizedResponse } from "@/lib/auth-server";
+import { getValidatedExt, isAllowedImageBuffer } from "@/lib/image-validation";
 
 export async function POST(request: NextRequest) {
     const user = await verifyAuth(request);
@@ -41,15 +42,34 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Post already exists" }, { status: 409 });
         }
 
+        // Validate every image before creating the post folder so rejected
+        // uploads don't leave empty folders behind.
+        const preparedImages: Array<{ buffer: Buffer; safeName: string }> = [];
+        for (const img of images) {
+            const safeName = path.basename(img.name);
+            if (!getValidatedExt(safeName)) {
+                return NextResponse.json(
+                    { error: `Unsupported image type: ${img.name}` },
+                    { status: 400 }
+                );
+            }
+            const buffer = Buffer.from(await img.arrayBuffer());
+            if (!(await isAllowedImageBuffer(buffer))) {
+                return NextResponse.json(
+                    { error: `Invalid image content: ${img.name}` },
+                    { status: 400 }
+                );
+            }
+            preparedImages.push({ buffer, safeName });
+        }
+
         fs.mkdirSync(folderPath, { recursive: true });
 
-        // Save images
         const imagesDir = path.join(folderPath, "images");
-        if (images.length > 0) {
+        if (preparedImages.length > 0) {
             fs.mkdirSync(imagesDir, { recursive: true });
-            for (const img of images) {
-                const buffer = Buffer.from(await img.arrayBuffer());
-                fs.writeFileSync(path.join(imagesDir, img.name), buffer);
+            for (const { buffer, safeName } of preparedImages) {
+                fs.writeFileSync(path.join(imagesDir, safeName), buffer);
             }
         }
 
