@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/AuthContext";
+import { Loader2 } from "lucide-react";
 
 interface BlogPost {
     slug: string;
@@ -22,6 +23,9 @@ export default function BlogPage() {
     const [query, setQuery] = useState("");
     const [loading, setLoading] = useState(true);
     const { user } = useAuth();
+
+    const [visibleCount, setVisibleCount] = useState(10);
+    const loaderRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         (async () => {
@@ -52,6 +56,32 @@ export default function BlogPage() {
     const pinnedPosts = filtered.filter(p => p.tag.split(",").map(t => t.trim().toLowerCase()).includes("pinned"));
     const normalPosts = filtered.filter(p => !p.tag.split(",").map(t => t.trim().toLowerCase()).includes("pinned"));
     const sortedPosts = [...pinnedPosts, ...normalPosts];
+
+    useEffect(() => {
+        setVisibleCount(10);
+    }, [query]);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    setVisibleCount((prev) => prev + 10);
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        const currentLoader = loaderRef.current;
+        if (currentLoader) {
+            observer.observe(currentLoader);
+        }
+
+        return () => {
+            if (currentLoader) {
+                observer.unobserve(currentLoader);
+            }
+        };
+    }, [sortedPosts.length, visibleCount]);
 
     return (
         <main className="min-h-screen bg-background pt-32 pb-10 px-6 font-serif">
@@ -93,7 +123,7 @@ export default function BlogPage() {
                     <p className="text-gray-500 text-center py-20 text-lg">Loading posts...</p>
                 ) : (
                     <div className="space-y-6">
-                        {sortedPosts.map((post) => (
+                        {sortedPosts.slice(0, visibleCount).map((post) => (
                             <div key={post.slug} className={`group grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6 items-start border-b border-gray-100 dark:border-gray-800 pb-6 ${post.tag.includes('pinned') ? 'bg-gray-50/50 dark:bg-gray-900/50 -mx-4 px-4 rounded-lg pt-4' : ''}`}>
 
                                 {/* Thumbnail */}
@@ -139,6 +169,13 @@ export default function BlogPage() {
 
                             </div>
                         ))}
+
+                        {visibleCount < sortedPosts.length && (
+                            <div ref={loaderRef} className="py-10 text-center text-gray-400 flex justify-center items-center gap-2 font-sans text-sm">
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <span>Loading more posts...</span>
+                            </div>
+                        )}
 
                         {sortedPosts.length === 0 && !loading && (
                             <p className="text-gray-500 text-center py-20 text-lg">

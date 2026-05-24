@@ -1,7 +1,7 @@
 "use client";
 
 import { pb } from "@/lib/pocketbase";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Trash2, Plus, ExternalLink, Rss, Loader2, Search } from "lucide-react";
 import { useAuth } from "@/components/AuthContext";
@@ -15,6 +15,7 @@ interface Article {
     source: string;
     feedUrl?: string;
     imageUrl?: string | null;
+    isHot?: boolean;
 }
 
 export default function NewsPage() {
@@ -27,6 +28,9 @@ export default function NewsPage() {
     // Feed Management
     const [newFeedUrl, setNewFeedUrl] = useState("");
     const [addingFeed, setAddingFeed] = useState(false);
+
+    const [visibleCount, setVisibleCount] = useState(10);
+    const loaderRef = useRef<HTMLDivElement | null>(null);
 
     const isNewArticle = (dateStr: string) => {
         try {
@@ -142,6 +146,32 @@ export default function NewsPage() {
         })
         : articles;
 
+    useEffect(() => {
+        setVisibleCount(10);
+    }, [query]);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    setVisibleCount((prev) => prev + 10);
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        const currentLoader = loaderRef.current;
+        if (currentLoader) {
+            observer.observe(currentLoader);
+        }
+
+        return () => {
+            if (currentLoader) {
+                observer.unobserve(currentLoader);
+            }
+        };
+    }, [filteredArticles.length, visibleCount]);
+
     const showSidebar = user && (user.permission_group || 0) >= 3;
 
     return (
@@ -185,7 +215,7 @@ export default function NewsPage() {
                             </div>
                         ) : (
                             <div className="space-y-8">
-                                {filteredArticles.map((article, idx) => {
+                                {filteredArticles.slice(0, visibleCount).map((article, idx) => {
                                     const isNew = isNewArticle(article.isoDate || article.pubDate);
                                     const pubDateFormatted = article.isoDate || article.pubDate
                                         ? new Date(article.isoDate || article.pubDate).toLocaleDateString()
@@ -234,6 +264,11 @@ export default function NewsPage() {
                                                                 NEW
                                                             </span>
                                                         )}
+                                                        {article.isHot && (
+                                                            <span className="ml-1 px-1.5 py-0.5 text-[9px] bg-orange-500 text-white font-sans font-bold uppercase rounded tracking-widest leading-none">
+                                                                HOT
+                                                            </span>
+                                                        )}
                                                     </div>
 
                                                     <h3 className="text-xl md:text-2xl font-bold mb-2 leading-snug">
@@ -268,6 +303,13 @@ export default function NewsPage() {
                                         </article>
                                     );
                                 })}
+
+                                {visibleCount < filteredArticles.length && (
+                                    <div ref={loaderRef} className="py-10 text-center text-gray-400 flex justify-center items-center gap-2 font-sans text-sm">
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        <span>Loading more articles...</span>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

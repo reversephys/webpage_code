@@ -64,49 +64,69 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const urlParam = searchParams.get('url');
 
+    let allArticles: any[] = [];
+    let fromCache = false;
+
     // If fetching all feeds, check the 24-hour server cache
     if (!urlParam) {
         const cached = getCachedArticles();
         if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
-            return NextResponse.json(cached.articles);
+            allArticles = cached.articles;
+            fromCache = true;
         }
     }
 
-    const feedsToFetch = urlParam ? [urlParam] : getFeeds();
-    const allArticles: any[] = [];
+    if (!fromCache) {
+        const feedsToFetch = urlParam ? [urlParam] : getFeeds();
 
-    await Promise.all(feedsToFetch.map(async (url) => {
-        try {
-            const feed = await parser.parseURL(url);
-            feed.items.forEach((item) => {
-                const imageUrl = extractImage(item);
-                allArticles.push({
-                    title: item.title || "Untitled",
-                    link: item.link || "",
-                    pubDate: item.pubDate || "",
-                    isoDate: item.isoDate || "",
-                    snippet: item.contentSnippet || item.summary || "",
-                    source: feed.title || url,
-                    feedUrl: url,
-                    imageUrl: imageUrl,
+        await Promise.all(feedsToFetch.map(async (url) => {
+            try {
+                const feed = await parser.parseURL(url);
+                feed.items.forEach((item) => {
+                    const imageUrl = extractImage(item);
+                    allArticles.push({
+                        title: item.title || "Untitled",
+                        link: item.link || "",
+                        pubDate: item.pubDate || "",
+                        isoDate: item.isoDate || "",
+                        snippet: item.contentSnippet || item.summary || "",
+                        source: feed.title || url,
+                        feedUrl: url,
+                        imageUrl: imageUrl,
+                    });
                 });
-            });
-        } catch (error) {
-            console.error(`Failed to parse feed: ${url}`, error);
+            } catch (error) {
+                console.error(`Failed to parse feed: ${url}`, error);
+            }
+        }));
+
+        // Sort by date descending
+        allArticles.sort((a, b) => {
+            const dateA = new Date(a.isoDate || a.pubDate || 0).getTime();
+            const dateB = new Date(b.isoDate || b.pubDate || 0).getTime();
+            return dateB - dateA;
+        });
+
+        // Save to cache if loading all feeds
+        if (!urlParam) {
+            saveArticlesCache(allArticles);
         }
-    }));
-
-    // Sort by date descending
-    allArticles.sort((a, b) => {
-        const dateA = new Date(a.isoDate || a.pubDate || 0).getTime();
-        const dateB = new Date(b.isoDate || b.pubDate || 0).getTime();
-        return dateB - dateA;
-    });
-
-    // Save to cache if loading all feeds
-    if (!urlParam) {
-        saveArticlesCache(allArticles);
     }
 
-    return NextResponse.json(allArticles);
+    // Attach isHot flag dynamically
+    try {
+        const { getTopIssues } = require("@/lib/news-tracking");
+        const topIssues = getTopIssues(10); // Check top 10 for hot badges
+        const hotLinks = new Set(topIssues.map((i: any) => i.link));
+
+        const articlesWithHot = allArticles.map(a => ({
+            ...a,
+            isHot: hotLinks.has(a.link)
+        }));
+
+        return NextResponse.json(articlesWithHot);
+    } catch (e) {
+        console.error("Error attaching isHot flag:", e);
+        return NextResponse.json(allArticles);
+    }
 }

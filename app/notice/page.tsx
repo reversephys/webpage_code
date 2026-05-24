@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { NoticePost } from "@/lib/notice";
 import { useAuth } from "@/components/AuthContext";
+import { Loader2 } from "lucide-react";
 
 export default function NoticePage() {
     const router = useRouter();
@@ -13,6 +14,9 @@ export default function NoticePage() {
     const [posts, setPosts] = useState<NoticePost[]>([]);
     const [query, setQuery] = useState("");
     const [loading, setLoading] = useState(true);
+
+    const [visibleCount, setVisibleCount] = useState(10);
+    const loaderRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         (async () => {
@@ -28,8 +32,6 @@ export default function NoticePage() {
         })();
     }, [user]);
 
-
-
     const filtered = query.trim()
         ? posts.filter((post) => {
             const q = query.toLowerCase();
@@ -44,6 +46,32 @@ export default function NoticePage() {
     const pinnedPosts = filtered.filter(p => p.tag.split(",").map(t => t.trim().toLowerCase()).includes("pinned"));
     const normalPosts = filtered.filter(p => !p.tag.split(",").map(t => t.trim().toLowerCase()).includes("pinned"));
     const sortedPosts = [...pinnedPosts, ...normalPosts];
+
+    useEffect(() => {
+        setVisibleCount(10);
+    }, [query]);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    setVisibleCount((prev) => prev + 10);
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        const currentLoader = loaderRef.current;
+        if (currentLoader) {
+            observer.observe(currentLoader);
+        }
+
+        return () => {
+            if (currentLoader) {
+                observer.unobserve(currentLoader);
+            }
+        };
+    }, [sortedPosts.length, visibleCount]);
 
     return (
         <main className="min-h-screen bg-background pt-32 pb-10 px-6 font-serif">
@@ -63,7 +91,6 @@ export default function NoticePage() {
                     Physical Lab의 공식 행사와 주요 소식을 외부에 알리는 공간입니다.
                 </p>
 
-
                 {/* Search bar */}
                 <div className="flex gap-2 mb-8">
                     <input
@@ -82,40 +109,49 @@ export default function NoticePage() {
                         {sortedPosts.length === 0 ? (
                             <p className="text-gray-500 text-center py-20 italic">No posts found.</p>
                         ) : (
-                            sortedPosts.map((post) => (
-                                <div key={post.slug} className={`group border-b border-gray-100 dark:border-gray-800 pb-6 ${post.tag.includes('pinned') ? 'bg-gray-50/50 dark:bg-gray-900/50 -mx-4 px-4 rounded-lg pt-4' : ''}`}>
-                                    {/* Content (Full Width) */}
-                                    <div>
-                                        <div className="flex items-center gap-4 mb-2 text-xs tracking-[0.2em] uppercase font-sans">
-                                            {post.tag.includes('pinned') && (
-                                                <span className="text-red-500 font-bold flex items-center gap-1">
-                                                    📌 PINNED
-                                                </span>
-                                            )}
-                                            <span className="text-gray-400">{post.date}</span>
-                                            <span className="w-8 h-[1px] bg-gray-200 dark:bg-gray-700" />
-                                            <span className="text-gray-400">{post.tag}</span>
+                            <>
+                                {sortedPosts.slice(0, visibleCount).map((post) => (
+                                    <div key={post.slug} className={`group border-b border-gray-100 dark:border-gray-800 pb-6 ${post.tag.includes('pinned') ? 'bg-gray-50/50 dark:bg-gray-900/50 -mx-4 px-4 rounded-lg pt-4' : ''}`}>
+                                        {/* Content (Full Width) */}
+                                        <div>
+                                            <div className="flex items-center gap-4 mb-2 text-xs tracking-[0.2em] uppercase font-sans">
+                                                {post.tag.includes('pinned') && (
+                                                    <span className="text-red-500 font-bold flex items-center gap-1">
+                                                        📌 PINNED
+                                                    </span>
+                                                )}
+                                                <span className="text-gray-400">{post.date}</span>
+                                                <span className="w-8 h-[1px] bg-gray-200 dark:bg-gray-700" />
+                                                <span className="text-gray-400">{post.tag}</span>
+                                            </div>
+
+                                            <Link href={`/notice/${post.slug}`}>
+                                                <h2 className="text-3xl font-bold mb-2 group-hover:underline decoration-1 underline-offset-4 cursor-pointer">
+                                                    {post.title}
+                                                </h2>
+                                            </Link>
+
+                                            <p className="text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-3">
+                                                {post.excerpt}
+                                            </p>
+
+                                            <Link
+                                                href={`/notice/${post.slug}`}
+                                                className="inline-flex items-center text-xs font-sans uppercase tracking-widest text-gray-400 hover:text-foreground transition-colors mt-4"
+                                            >
+                                                Read More
+                                            </Link>
                                         </div>
-
-                                        <Link href={`/notice/${post.slug}`}>
-                                            <h2 className="text-3xl font-bold mb-2 group-hover:underline decoration-1 underline-offset-4 cursor-pointer">
-                                                {post.title}
-                                            </h2>
-                                        </Link>
-
-                                        <p className="text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-3">
-                                            {post.excerpt}
-                                        </p>
-
-                                        <Link
-                                            href={`/notice/${post.slug}`}
-                                            className="inline-flex items-center text-xs font-sans uppercase tracking-widest text-gray-400 hover:text-foreground transition-colors mt-4"
-                                        >
-                                            Read More
-                                        </Link>
                                     </div>
-                                </div>
-                            ))
+                                ))}
+
+                                {visibleCount < sortedPosts.length && (
+                                    <div ref={loaderRef} className="py-10 text-center text-gray-400 flex justify-center items-center gap-2 font-sans text-sm">
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        <span>Loading more posts...</span>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 )}

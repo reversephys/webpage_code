@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthContext";
+import { Loader2 } from "lucide-react";
 
 interface Skill {
     title: string;
@@ -18,6 +19,9 @@ export default function SkillsPage() {
     const [skills, setSkills] = useState<Skill[]>([]);
     const [query, setQuery] = useState("");
     const [loading, setLoading] = useState(true);
+
+    const [visibleCount, setVisibleCount] = useState(15);
+    const loaderRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         if (!authLoading) {
@@ -44,16 +48,6 @@ export default function SkillsPage() {
         })();
     }, [user]);
 
-    if (authLoading) {
-        return (
-            <main className="min-h-screen bg-background pt-32 pb-20 px-6 font-serif">
-                <div className="max-w-4xl mx-auto text-center text-gray-400">Loading...</div>
-            </main>
-        );
-    }
-
-    if (!user) return null;
-
     const filtered = query.trim()
         ? skills.filter((skill) => {
             const q = query.toLowerCase();
@@ -63,6 +57,42 @@ export default function SkillsPage() {
             );
         })
         : skills;
+
+    useEffect(() => {
+        setVisibleCount(15);
+    }, [query]);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    setVisibleCount((prev) => prev + 15);
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        const currentLoader = loaderRef.current;
+        if (currentLoader) {
+            observer.observe(currentLoader);
+        }
+
+        return () => {
+            if (currentLoader) {
+                observer.unobserve(currentLoader);
+            }
+        };
+    }, [filtered.length, visibleCount]);
+
+    if (authLoading) {
+        return (
+            <main className="min-h-screen bg-background pt-32 pb-20 px-6 font-serif">
+                <div className="max-w-4xl mx-auto text-center text-gray-400">Loading...</div>
+            </main>
+        );
+    }
+
+    if (!user) return null;
 
     return (
         <main className="min-h-screen bg-background pt-32 pb-10 px-6 font-serif">
@@ -95,7 +125,7 @@ export default function SkillsPage() {
                     <p className="text-gray-500 text-center py-20 text-lg">Loading skills...</p>
                 ) : (
                     <div className="grid gap-3">
-                        {filtered.map((skill) => (
+                        {filtered.slice(0, visibleCount).map((skill) => (
                             <Link
                                 key={skill.slug}
                                 href={`/skills/${skill.slug}`}
@@ -114,6 +144,13 @@ export default function SkillsPage() {
                                 </div>
                             </Link>
                         ))}
+
+                        {visibleCount < filtered.length && (
+                            <div ref={loaderRef} className="py-10 text-center text-gray-400 flex justify-center items-center gap-2 font-sans text-sm">
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <span>Loading more skills...</span>
+                            </div>
+                        )}
 
                         {filtered.length === 0 && !loading && (
                             <p className="text-gray-500 text-center py-20 text-lg">
