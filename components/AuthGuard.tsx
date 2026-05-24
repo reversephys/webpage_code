@@ -4,15 +4,19 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthContext";
 
-export default function AuthGuard({ children }: { children: React.ReactNode }) {
+export default function AuthGuard({ children, minPermission }: { children: React.ReactNode, minPermission?: number }) {
     const router = useRouter();
     const { user, loading } = useAuth();
 
     useEffect(() => {
-        if (!loading && !user) {
-            router.push("/login");
+        if (!loading) {
+            if (!user) {
+                router.push("/login");
+            } else if (minPermission && (user.permission_group || 0) < minPermission) {
+                router.push("/");
+            }
         }
-    }, [user, loading, router]);
+    }, [user, loading, router, minPermission]);
 
     if (loading) {
         return (
@@ -23,6 +27,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     }
 
     if (!user) return null;
+    if (minPermission && (user.permission_group || 0) < minPermission) return null;
 
     return <>{children}</>;
 }

@@ -30,7 +30,7 @@ export default async function SkillPage({ params }: SkillPageProps) {
     }
 
     return (
-        <AuthGuard>
+        <AuthGuard minPermission={3}>
             <main className="min-h-screen bg-background pt-32 pb-20 px-6 font-serif">
                 <article className="max-w-3xl mx-auto">
                     <div className="flex justify-between items-center mb-12">

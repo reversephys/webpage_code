@@ -12,6 +12,7 @@ type NavItem = {
     name: string;
     href?: string;
     auth?: boolean;
+    minPermission?: number;
     isDropdown?: boolean;
     subItems?: NavItem[];
 };
@@ -48,8 +49,8 @@ export function Navbar() {
             subItems: [
                 { name: "Blog", href: "/blog" },
                 { name: "Feed", href: "/feed" },
-                { name: "Skills", href: "/skills", auth: true },
-                { name: "Staff", href: "/staff", auth: true },
+                { name: "Skills", href: "/skills", auth: true, minPermission: 3 },
+                { name: "Staff", href: "/staff", auth: true, minPermission: 4 },
             ]
         },
         { name: "Member", href: "/member" },
@@ -69,11 +70,19 @@ export function Navbar() {
         if (item.isDropdown && item.subItems) {
             return {
                 ...item,
-                subItems: item.subItems.filter(sub => !sub.auth || user)
+                subItems: item.subItems.filter(sub => {
+                    if (sub.auth && !user) return false;
+                    if (sub.minPermission && (!user || (user.permission_group || 0) < sub.minPermission)) return false;
+                    return true;
+                })
             };
         }
         return item;
-    }).filter(item => !item.auth || user);
+    }).filter(item => {
+        if (item.auth && !user) return false;
+        if (item.minPermission && (!user || (user.permission_group || 0) < item.minPermission)) return false;
+        return true;
+    });
 
     return (
         <nav className="fixed top-0 left-0 w-full z-50 bg-background/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 transition-all duration-300">

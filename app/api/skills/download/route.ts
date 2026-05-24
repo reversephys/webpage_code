@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { SKILLS_DIR, getSkillFolderName } from "@/lib/skills";
+import { getServerUserFromCookie } from "@/lib/auth-server";
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -9,6 +10,12 @@ export async function GET(request: NextRequest) {
 
     if (!slug) {
         return NextResponse.json({ error: "Slug is required." }, { status: 400 });
+    }
+
+    const user = await getServerUserFromCookie();
+    const permGroup = user?.permission_group !== undefined ? Number(user.permission_group) : -1;
+    if (permGroup < 3) {
+        return NextResponse.json({ error: "Forbidden: permission >= 3 required" }, { status: 403 });
     }
 
     const folderName = getSkillFolderName(slug);

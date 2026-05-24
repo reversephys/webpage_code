@@ -20,8 +20,12 @@ export default function SkillsPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!authLoading && !user) {
-            router.push("/login");
+        if (!authLoading) {
+            if (!user) {
+                router.push("/login");
+            } else if ((user.permission_group || 0) < 3) {
+                router.push("/");
+            }
         }
     }, [user, authLoading, router]);
 

@@ -44,15 +44,17 @@ export default function NoticePostActions({ slug }: { slug: string }) {
                 <Edit className="w-4 h-4 mr-1" />
                 Edit
             </Link>
-            <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="inline-flex items-center text-xs font-sans uppercase tracking-widest text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                title="Delete Post"
-            >
-                <Trash2 className="w-4 h-4 mr-1" />
-                {deleting ? "Deleting..." : "Delete"}
-            </button>
+            {user && (user.permission_group || 0) >= 4 && (
+                <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="inline-flex items-center text-xs font-sans uppercase tracking-widest text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                    title="Delete Post"
+                >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    {deleting ? "Deleting..." : "Delete"}
+                </button>
+            )}
         </div>
     );
 }

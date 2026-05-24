@@ -8,6 +8,9 @@ import { verifyAuth, unauthorizedResponse } from "@/lib/auth-server";
 export async function POST(request: NextRequest) {
     const user = await verifyAuth(request);
     if (!user) return unauthorizedResponse();
+    if ((user.permission_group || 0) < 3) {
+        return NextResponse.json({ error: "Forbidden: permission >= 3 required" }, { status: 403 });
+    }
 
     try {
         const { slug } = await request.json();

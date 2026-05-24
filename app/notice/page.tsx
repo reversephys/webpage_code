@@ -50,7 +50,7 @@ export default function NoticePage() {
             <div className="max-w-4xl mx-auto">
                 <div className="flex items-end justify-between mb-2">
                     <h1 className="text-3xl md:text-5xl font-eczar tracking-tight">Notice</h1>
-                    {user && (
+                    {user && (user.permission_group || 0) >= 4 && (
                         <Link
                             href="/notice/write"
                             className="text-sm font-sans uppercase tracking-widest border border-gray-300 dark:border-gray-600 px-5 py-2 hover:bg-foreground hover:text-background transition-colors"

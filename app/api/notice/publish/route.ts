@@ -11,6 +11,10 @@ export async function POST(request: NextRequest) {
     const user = await verifyAuth(request);
     if (!user) return unauthorizedResponse();
 
+    if ((user.permission_group || 0) < 4) {
+        return NextResponse.json({ error: "Forbidden: permission >= 4 required" }, { status: 403 });
+    }
+
     try {
         const formData = await request.formData();
         const title = formData.get("title") as string;
