@@ -15,7 +15,9 @@ import {
   Share2, 
   Users, 
   Network,
-  ChevronDown 
+  ChevronDown,
+  Radio,
+  TrendingUp
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 
@@ -209,23 +211,23 @@ export default function AboutPage() {
               </div>
             </motion.div>
 
-            {/* Card 3: Embedded System & Chip Security */}
+            {/* Card 3: Wireless & RF Security */}
             <motion.div variants={cardFadeIn} className="bg-slate-50/50 border border-slate-200 rounded-2xl p-8 hover:bg-white hover:shadow-[0_15px_40px_rgba(15,23,42,0.05)] transition-all duration-300 relative group overflow-hidden">
               <div className="flex items-center gap-4 mb-6">
                 <div className="p-3 rounded-xl bg-slate-100 text-slate-800">
-                  <ShieldCheck className="w-6 h-6" />
+                  <Radio className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-lg md:text-xl font-bold text-slate-900">Embedded System & Chip Security</h3>
-                  <p className="text-xs text-slate-400">임베디드 및 칩 보안</p>
+                  <h3 className="text-lg md:text-xl font-bold text-slate-900">Wireless & RF Security</h3>
+                  <p className="text-xs text-slate-400">무선 및 RF 보안</p>
                 </div>
               </div>
               <div className="space-y-4">
                 <p className="text-sm md:text-base text-slate-800 font-medium">
-                  We investigate the critical links between hardware components and software layers, securing diverse systems ranging from everyday smart appliances to cutting-edge AI accelerator chips.
+                  We investigate wireless communication attack vectors, focusing on RF (Radio Frequency) protocols. By reverse engineering proprietary signals and analyzing OTA (Over-the-Air) transmissions, we verify vulnerabilities in wireless control systems.
                 </p>
                 <p className="text-xs md:text-sm text-slate-500 leading-relaxed">
-                  장치의 부품과 소프트웨어 사이의 연결 고리를 연구합니다. 이를 통해 일반 가전기기부터 최신 고성능 AI 칩에 이르기까지 다양한 시스템을 안전하게 만듭니다.
+                  RF(무선 주파수) 프로토콜을 비롯한 무선 통신에서의 공격 벡터를 탐색합니다. 고유 프로토콜을 역공학하고 무선(OTA) 전송 신호를 분석하여, 무선 제어 시스템에 존재하는 취약점을 실증합니다.
                 </p>
               </div>
             </motion.div>
@@ -243,10 +245,10 @@ export default function AboutPage() {
               </div>
               <div className="space-y-4">
                 <p className="text-sm md:text-base text-slate-800 font-medium">
-                  We do not rely on theory alone. By crafting custom security tools and conducting hands-on tests on live hardware, we ensure our security is practical and verifiable.
+                  We do not wait for external tools to be built. By crafting custom security tools and conducting hands-on tests on live hardware, we ensure our security is practical and verifiable.
                 </p>
                 <p className="text-xs md:text-sm text-slate-500 leading-relaxed">
-                  이론으로만 믿지 않습니다. 자체적인 보안 도구를 제작하고 실제 시스템을 직접 테스트하며, 우리의 보안이 실질적이고 검증 가능한지 확인합니다.
+                  외부에서 도구가 만들어질 때까지 기다리지 않습니다. 자체적인 보안 도구를 제작하고 실제 시스템을 직접 테스트하며, 우리의 보안이 실질적이고 검증 가능한지 확인합니다.
                 </p>
               </div>
             </motion.div>
@@ -381,7 +383,7 @@ export default function AboutPage() {
               <div className="flex items-start md:items-center gap-4">
                 <span className="text-2xl font-bold text-slate-300 font-mono group-hover:text-slate-800 transition-colors">03</span>
                 <div className="p-2.5 rounded-xl bg-slate-200/50 text-slate-800">
-                  <Users className="w-5 h-5" />
+                  <TrendingUp className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
                   <h4 className="text-base md:text-lg font-bold text-slate-900">
