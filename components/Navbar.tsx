@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Menu, X, User, ChevronDown, ChevronUp } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
 import { useAuth } from "@/components/AuthContext";
+import { Logo } from "@/components/Logo";
 
 type NavItem = {
     name: string;
@@ -79,7 +80,8 @@ export function Navbar() {
             <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
 
                 {/* Logo - Eczar Font */}
-                <Link href="/" className="text-3xl font-eczar tracking-wider hover:opacity-80 transition-opacity">
+                <Link href="/" className="inline-flex items-center gap-3 text-3xl font-eczar tracking-wider hover:opacity-80 transition-opacity">
+                    <Logo className="w-8 h-8 text-foreground" />
                     PHYSICAL LAB
                 </Link>
 

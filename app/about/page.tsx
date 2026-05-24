@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { getAboutContent } from "@/lib/about";
+import { Logo } from "@/components/Logo";
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,8 @@ export default async function AboutPage() {
 
                 {/* Content Overlay */}
                 <div className="relative z-10 text-center text-white px-4">
-                    <h1 className="text-6xl md:text-8xl lg:text-9xl font-eczar uppercase tracking-tighter mb-6 drop-shadow-2xl">
+                    <h1 className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 text-6xl md:text-8xl lg:text-9xl font-eczar uppercase tracking-tighter mb-6 drop-shadow-2xl">
+                        <Logo className="w-16 h-16 md:w-24 md:h-24 lg:w-32 lg:h-32 text-white shrink-0" />
                         PHYSICAL LAB
                     </h1>
                     <p className="text-xl md:text-2xl font-serif italic tracking-widest uppercase opacity-90 mb-8">
