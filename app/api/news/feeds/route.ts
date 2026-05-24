@@ -11,6 +11,10 @@ export async function POST(request: NextRequest) {
     const user = await verifyAuth(request);
     if (!user) return unauthorizedResponse();
 
+    if ((user.permission_group || 0) < 3) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     try {
         const { url } = await request.json();
         if (!url) return NextResponse.json({ error: "URL is required" }, { status: 400 });
@@ -27,6 +31,10 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
     const user = await verifyAuth(request);
     if (!user) return unauthorizedResponse();
+
+    if ((user.permission_group || 0) < 3) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     try {
         const { url } = await request.json();

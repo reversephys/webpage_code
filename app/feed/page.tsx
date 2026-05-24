@@ -325,7 +325,7 @@ export default function NewsPage() {
                     </div>
 
                     {/* Right Column: Feed Manager (logged-in only) */}
-                    {user && (
+                    {user && (user.permission_group || 0) >= 3 && (
                         <div className="space-y-8">
                             <div className="sticky top-32">
                                 <div className="bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-800 rounded-lg">

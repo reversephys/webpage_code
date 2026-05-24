@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { pb } from "@/lib/pocketbase";
 import { SKILLS_DIR, getSkillFolderName } from "@/lib/skills";
 import { verifyAuth, unauthorizedResponse } from "@/lib/auth-server";
 
@@ -25,6 +26,21 @@ export async function POST(request: NextRequest) {
         if (fs.existsSync(folderPath)) {
             const newPath = path.join(SKILLS_DIR, `_${folderName}`);
             fs.renameSync(folderPath, newPath);
+        }
+
+        // Delete associated comments and tags
+        try {
+            const tags = await pb.collection("post_tags").getFullList({ filter: `post_uuid='${slug}'` });
+            for (const tag of tags) {
+                await pb.collection("post_tags").delete(tag.id);
+            }
+
+            const comments = await pb.collection("comments").getFullList({ filter: `post_uuid='${slug}'` });
+            for (const comment of comments) {
+                await pb.collection("comments").delete(comment.id);
+            }
+        } catch (e) {
+            console.error("Failed to delete related comments/tags:", e);
         }
 
         return NextResponse.json({ redirect: "/skills", success: true });

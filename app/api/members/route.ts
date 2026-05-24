@@ -6,10 +6,10 @@ export async function GET() {
         const pbUrl = process.env.NEXT_PUBLIC_POCKETBASE_URL || "http://127.0.0.1:8090";
         const pb = new PocketBase(pbUrl);
 
-        // Fetch users where permission_group is 1, 2, 3, or 4
+        // Fetch users where permission_group is >= 3
         // Sort by permission_group ascending, then created descending
         const records = await pb.collection("users").getFullList({
-            filter: "permission_group >= 1 && permission_group <= 4",
+            filter: "permission_group >= 3",
             sort: "permission_group,-created",
         });
 
