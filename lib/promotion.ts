@@ -8,7 +8,7 @@ export function getInitialPermissionGroup(): number {
     const now = new Date();
 
     if (now >= PROMO_START && now <= PROMO_END) {
-        return 3; // Special promotion: level 3
+        return 1; // Special promotion: level 1
     }
 
     return 0; // Default: level 0
