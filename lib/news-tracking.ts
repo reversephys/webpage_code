@@ -29,35 +29,51 @@ export function getTrackedArticles(): TrackedArticle[] {
 
 export function trackClick(article: { link: string; title: string; snippet: string }) {
     const articles = getTrackedArticles();
-    const index = articles.findIndex((a) => a.link === article.link);
+    
+    // 1. 오래된 데이터 먼저 필터링 (30일 기준)
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+    
+    let activeArticles = articles.filter(a => {
+        const lastClicked = new Date(a.lastClickedAt);
+        return lastClicked >= oneMonthAgo;
+    });
+
+    const index = activeArticles.findIndex((a) => a.link === article.link);
 
     if (index >= 0) {
-        articles[index].clicks += 1;
-        articles[index].lastClickedAt = new Date().toISOString();
+        activeArticles[index].clicks += 1;
+        activeArticles[index].lastClickedAt = new Date().toISOString();
         // Update metadata in case it changed
-        articles[index].title = article.title;
-        articles[index].snippet = article.snippet;
+        activeArticles[index].title = article.title;
+        activeArticles[index].snippet = article.snippet;
     } else {
-        articles.push({
+        activeArticles.push({
             ...article,
             clicks: 1,
             lastClickedAt: new Date().toISOString(),
         });
     }
 
-    fs.writeFileSync(TRACKING_FILE, JSON.stringify(articles, null, 2));
+    // 2. 클릭수 기준으로 정렬
+    activeArticles.sort((a, b) => b.clicks - a.clicks);
+
+    // 3. 파일 저장 개수 제한 (새로운 글이 클릭수를 누적할 수 있도록 파일에는 여유있게 100개까지만 저장)
+    activeArticles = activeArticles.slice(0, 100);
+
+    fs.writeFileSync(TRACKING_FILE, JSON.stringify(activeArticles, null, 2));
 }
 
-export function getTopIssues(limit: number = 2): TrackedArticle[] {
+export function getTopIssues(limit: number = 10): TrackedArticle[] {
     const articles = getTrackedArticles();
 
-    // Filter out articles older than 7 days
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // Filter out articles older than 30 days
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
 
     const activeArticles = articles.filter(a => {
         const lastClicked = new Date(a.lastClickedAt);
-        return lastClicked >= sevenDaysAgo;
+        return lastClicked >= oneMonthAgo;
     });
 
     // Save back if any articles were pruned
@@ -65,7 +81,7 @@ export function getTopIssues(limit: number = 2): TrackedArticle[] {
         fs.writeFileSync(TRACKING_FILE, JSON.stringify(activeArticles, null, 2));
     }
 
-    // Sort by clicks descending
+    // Sort by clicks descending and return the requested limit
     return activeArticles
         .sort((a, b) => b.clicks - a.clicks)
         .slice(0, limit);
