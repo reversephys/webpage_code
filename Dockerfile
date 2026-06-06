@@ -20,11 +20,11 @@ RUN ARCH=$(uname -m) && \
 # Copy the application source code (excluding Contents via .dockerignore)
 COPY . .
 
-# Set permissions for update script
-RUN chmod +x update.sh
+# Remove Windows CRLF line endings if present, and set executable permissions
+RUN sed -i 's/\r$//' update.sh && chmod +x update.sh
 
 # Setup cron job to run daily at midnight (adjust the timing if needed)
-RUN echo "0 0 * * * /app/update.sh >> /var/log/cron.log 2>&1" > /etc/crontabs/root
+RUN echo "0 0 * * * /app/code/update.sh >> /var/log/cron.log 2>&1" > /etc/crontabs/root
 
 # Set environment to production and point to internal PocketBase
 ENV NODE_ENV=production
