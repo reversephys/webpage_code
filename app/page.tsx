@@ -73,8 +73,8 @@ export default async function Home() {
             {/* Pinned Notices Section (Notice - Order 2 on Mobile) */}
             <div className="order-2">
               <div className="border-b border-gray-200 dark:border-gray-800 pb-4 mb-6 flex items-center justify-between">
-                <span className="block text-sm font-bold uppercase tracking-widest text-red-500 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="block text-sm font-bold uppercase tracking-widest text-foreground flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-foreground" />
                   Notice (Pinned)
                 </span>
                 <span className="text-xs text-gray-400 uppercase tracking-widest">
@@ -86,7 +86,7 @@ export default async function Home() {
                 {pinnedNotices.map((notice) => (
                   <Link href={`/notice/${notice.slug}`} key={notice.slug} className="block group">
                     <div className="flex items-center gap-4 mb-2 text-xs tracking-wider uppercase font-sans text-gray-400">
-                      <span className="text-red-500 font-bold flex items-center gap-1">📌 PINNED</span>
+                      <span className="text-foreground font-bold flex items-center gap-1">📌 PINNED</span>
                       <span>{notice.date}</span>
                     </div>
                     <h3 className="text-xl font-serif font-bold mb-2 group-hover:underline decoration-1 underline-offset-4">
