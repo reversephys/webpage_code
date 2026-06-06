@@ -41,7 +41,7 @@ export function PostActions({ slug, authorId }: PostActionsProps) {
         }
     };
 
-    if (!user || user.id !== authorId) return null;
+    if (!user || (user.id !== authorId && Number(user.permission_group) !== 99)) return null;
 
     return (
         <div className="flex gap-3">

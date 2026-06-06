@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { pb } from "@/lib/pocketbase";
-import { getPostFolderName, CONTENTS_DIR } from "@/lib/blog";
+import { getPostFolderName, CONTENTS_DIR, getPostBySlug } from "@/lib/blog";
 import { verifyAuth, unauthorizedResponse } from "@/lib/auth-server";
 
 export async function POST(request: NextRequest) {
@@ -14,6 +14,16 @@ export async function POST(request: NextRequest) {
 
         if (!slug) {
             return NextResponse.json({ error: "Slug is required." }, { status: 400 });
+        }
+
+        const post = await getPostBySlug(slug);
+        if (!post) {
+            return NextResponse.json({ error: "Post not found." }, { status: 404 });
+        }
+
+        const permGroup = user.permission_group !== undefined ? Number(user.permission_group) : -1;
+        if (post.userId !== user.id && permGroup !== 99) {
+            return NextResponse.json({ error: "Forbidden: You are not the author of this post." }, { status: 403 });
         }
 
         const folderName = getPostFolderName(slug);

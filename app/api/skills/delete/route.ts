@@ -2,21 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { pb } from "@/lib/pocketbase";
-import { SKILLS_DIR, getSkillFolderName } from "@/lib/skills";
+import { SKILLS_DIR, getSkillFolderName, getSkillBySlug } from "@/lib/skills";
 import { verifyAuth, unauthorizedResponse } from "@/lib/auth-server";
 
 export async function POST(request: NextRequest) {
     const user = await verifyAuth(request);
     if (!user) return unauthorizedResponse();
-    if ((user.permission_group || 0) < 3) {
-        return NextResponse.json({ error: "Forbidden: permission >= 3 required" }, { status: 403 });
-    }
 
     try {
         const { slug } = await request.json();
 
         if (!slug) {
             return NextResponse.json({ error: "Slug is required." }, { status: 400 });
+        }
+
+        const skill = getSkillBySlug(slug);
+        if (!skill) {
+            return NextResponse.json({ error: "Skill not found." }, { status: 404 });
+        }
+
+        const permGroup = user.permission_group !== undefined ? Number(user.permission_group) : -1;
+        if (skill.userId !== user.id && permGroup !== 99) {
+            return NextResponse.json({ error: "Forbidden: You are not the author of this skill." }, { status: 403 });
         }
 
         const folderName = getSkillFolderName(slug);

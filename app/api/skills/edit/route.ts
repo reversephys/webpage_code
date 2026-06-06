@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { SKILLS_DIR, getSkillFolderName } from "@/lib/skills";
+import { SKILLS_DIR, getSkillFolderName, getSkillBySlug } from "@/lib/skills";
 import { verifyAuth, unauthorizedResponse } from "@/lib/auth-server";
 
 function containsDangerousContent(content: string): boolean {
@@ -14,15 +14,22 @@ function containsDangerousContent(content: string): boolean {
 export async function POST(request: NextRequest) {
     const user = await verifyAuth(request);
     if (!user) return unauthorizedResponse();
-    if ((user.permission_group || 0) < 3) {
-        return NextResponse.json({ error: "Forbidden: permission >= 3 required" }, { status: 403 });
-    }
 
     try {
         const { slug, newTitle, content } = await request.json();
 
         if (!slug || !newTitle || !content) {
             return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+        }
+
+        const skill = getSkillBySlug(slug);
+        if (!skill) {
+            return NextResponse.json({ error: "Skill not found." }, { status: 404 });
+        }
+
+        const permGroup = user.permission_group !== undefined ? Number(user.permission_group) : -1;
+        if (skill.userId !== user.id && permGroup !== 99) {
+            return NextResponse.json({ error: "Forbidden: You are not the author of this skill." }, { status: 403 });
         }
 
         // Security check

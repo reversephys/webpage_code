@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import PocketBase from "pocketbase";
-import { CONTENTS_DIR, getPostFolderName } from "@/lib/staff";
+import { CONTENTS_DIR, getPostFolderName, getPostBySlug } from "@/lib/staff";
 import { verifyAuth, unauthorizedResponse } from "@/lib/auth-server";
 
 export async function POST(request: NextRequest) {
@@ -20,6 +20,16 @@ export async function POST(request: NextRequest) {
 
         if (!slug || !title || !tag || !content) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+        }
+
+        const post = await getPostBySlug(slug);
+        if (!post) {
+            return NextResponse.json({ error: "Post not found" }, { status: 404 });
+        }
+
+        const permGroup = user.permission_group !== undefined ? Number(user.permission_group) : -1;
+        if (post.userId !== user.id && permGroup !== 99) {
+            return NextResponse.json({ error: "Forbidden: You are not the author of this post" }, { status: 403 });
         }
 
         // Find existing folder

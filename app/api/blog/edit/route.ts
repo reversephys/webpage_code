@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import PocketBase from "pocketbase";
-import { getPostFolderName, CONTENTS_DIR } from "@/lib/blog";
+import { getPostFolderName, CONTENTS_DIR, getPostBySlug } from "@/lib/blog";
 import { verifyAuth, unauthorizedResponse } from "@/lib/auth-server";
 
 function containsDangerousContent(content: string): boolean {
@@ -34,6 +34,16 @@ export async function POST(request: NextRequest) {
 
         if (!slug || !title || !tag || !content) {
             return NextResponse.json({ error: "All fields are required." }, { status: 400 });
+        }
+
+        const post = await getPostBySlug(slug);
+        if (!post) {
+            return NextResponse.json({ error: "Post not found." }, { status: 404 });
+        }
+
+        const permGroup = user.permission_group !== undefined ? Number(user.permission_group) : -1;
+        if (post.userId !== user.id && permGroup !== 99) {
+            return NextResponse.json({ error: "Forbidden: You are not the author of this post." }, { status: 403 });
         }
 
         // Security check

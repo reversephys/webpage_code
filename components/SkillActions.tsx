@@ -50,7 +50,7 @@ export function SkillActions({ title, slug, authorId }: SkillActionsProps) {
             >
                 Download
             </Link>
-            {user && user.id === authorId && (
+            {user && (user.id === authorId || Number(user.permission_group) === 99) && (
                 <>
                     <Link
                         href={`/skills/write?edit=${encodeURIComponent(slug)}`}

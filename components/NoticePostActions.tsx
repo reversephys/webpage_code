@@ -12,7 +12,7 @@ export default function NoticePostActions({ slug }: { slug: string }) {
     const { user } = useAuth();
     const [deleting, setDeleting] = useState(false);
 
-    if (!user) return null;
+    if (!user || ((user.permission_group || 0) < 4 && Number(user.permission_group) !== 99)) return null;
 
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this post?")) return;
@@ -44,7 +44,7 @@ export default function NoticePostActions({ slug }: { slug: string }) {
                 <Edit className="w-4 h-4 mr-1" />
                 Edit
             </Link>
-            {user && (user.permission_group || 0) >= 4 && (
+            {user && ((user.permission_group || 0) >= 4 || Number(user.permission_group) === 99) && (
                 <button
                     onClick={handleDelete}
                     disabled={deleting}

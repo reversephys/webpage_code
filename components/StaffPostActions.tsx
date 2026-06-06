@@ -32,7 +32,7 @@ export default function StaffPostActions({ slug, authorId }: { slug: string, aut
         }
     };
 
-    if (!user || user.id !== authorId) return null;
+    if (!user || (user.id !== authorId && Number(user.permission_group) !== 99)) return null;
 
     return (
         <div className="flex items-center gap-4">
