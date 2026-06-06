@@ -45,9 +45,10 @@ export default async function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16 items-start">
 
           {/* Left Column: Intro & Hot Issues */}
-          <div className="space-y-12">
-            {/* Intro */}
-            <div className="space-y-6">
+          {/* Using contents on mobile so children act as direct grid items, block on desktop */}
+          <div className="contents md:block space-y-12">
+            {/* Intro (Order 1 on Mobile) */}
+            <div className="space-y-6 order-1">
               <h2 className="text-5xl md:text-6xl font-serif font-bold leading-tight">
                 Unlocking the <br /> <span className="italic">Unknown.</span>
               </h2>
@@ -60,14 +61,17 @@ export default async function Home() {
               </Link>
             </div>
 
-            {/* Hot Issues Section (Moved to Left Bottom) */}
-            <HotIssuesList issues={topIssues} />
+            {/* Hot Issues Section (Feed - Order 4 on Mobile) */}
+            <div className="order-4">
+              <HotIssuesList issues={topIssues} />
+            </div>
           </div>
 
           {/* Right Column: Pinned Notices & Laboratory Logs */}
-          <div className="space-y-12">
-            {/* Pinned Notices Section (Right Top) */}
-            <div>
+          {/* Using contents on mobile so children act as direct grid items, block on desktop */}
+          <div className="contents md:block space-y-12">
+            {/* Pinned Notices Section (Notice - Order 2 on Mobile) */}
+            <div className="order-2">
               <div className="border-b border-gray-200 dark:border-gray-800 pb-4 mb-6 flex items-center justify-between">
                 <span className="block text-sm font-bold uppercase tracking-widest text-red-500 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -99,8 +103,10 @@ export default async function Home() {
               </div>
             </div>
 
-            {/* Laboratory Logs Section (Right Bottom) */}
-            <LabLogsList posts={blogPosts} />
+            {/* Laboratory Logs Section (Blog - Order 3 on Mobile) */}
+            <div className="order-3">
+              <LabLogsList posts={blogPosts} />
+            </div>
           </div>
 
         </div>
