@@ -47,7 +47,7 @@ function getTimestamp(): string {
 function sanitizeFolderName(name: string): string {
     return name
         .replace(/\s+/g, "-")
-        .replace(/[^a-zA-Z0-9\-]/g, "")
+        .replace(/[^a-zA-Z0-9가-힣\-]/g, "")
         .replace(/-+/g, "-")
         .replace(/^-|-$/g, "");
 }
