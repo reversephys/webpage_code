@@ -1,8 +1,8 @@
 FROM node:22-alpine
 
-# Install git, cron, rm, pm2, and wget/unzip for PocketBase
+# Install git, ssh (required to push over git@github.com), cron, pm2, and wget/unzip for PocketBase
 RUN apk update && \
-    apk add --no-cache git dcron tzdata wget unzip && \
+    apk add --no-cache git openssh-client dcron tzdata wget unzip && \
     npm install -g pm2
 
 # Setup working directory
@@ -23,8 +23,10 @@ COPY . .
 # Remove Windows CRLF line endings if present, and set executable permissions
 RUN sed -i 's/\r$//' update.sh && chmod +x update.sh
 
-# Setup cron job to run daily at midnight (adjust the timing if needed)
-RUN echo "0 0 * * * /app/code/update.sh >> /var/log/cron.log 2>&1" > /etc/crontabs/root
+# Setup cron job to run daily at midnight (adjust the timing if needed).
+# Invoke via `sh` so it does not depend on the exec bit — update.sh lives on the
+# bind-mounted host volume, which shadows any chmod done during the image build.
+RUN echo "0 0 * * * sh /app/code/update.sh >> /var/log/cron.log 2>&1" > /etc/crontabs/root
 
 # Set environment to production and point to internal PocketBase
 ENV NODE_ENV=production

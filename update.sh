@@ -38,7 +38,10 @@ cd /app
 git config --global user.name "Docker Auto Backup"
 git config --global user.email "docker@physicallab.com"
 
-# Add trusting directory inside docker
+# Add trusting directory inside docker.
+# The repo root is /app (owned by the host user, not the container's root), so it
+# must be whitelisted or every git command here fails with "dubious ownership".
+git config --global --add safe.directory /app
 git config --global --add safe.directory /app/Contents
 
 git add Contents/ pb_data/data.db
