@@ -11,6 +11,7 @@ name: Daily Issue Auto-Handler (Gemini)
 #  1) 저장소 Secret 에 GEMINI_API_KEY 등록 (https://aistudio.google.com/apikey 에서 발급)
 #  2) Settings -> Actions -> General -> Workflow permissions:
 #     "Read and write permissions" + "Allow GitHub Actions to create and approve pull requests" 체크
+#  3) 이 파일은 반드시 기본 브랜치(main)에 있어야 예약 실행(schedule)이 동작한다.
 
 on:
   schedule:
@@ -62,6 +63,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           INPUT_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          # CI(헤드리스)에서 워크스페이스를 신뢰하도록 하여 자동 승인(YOLO)이 유지되게 함
+          GEMINI_CLI_TRUST_WORKSPACE: "true"
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           gemini_cli_version: latest
@@ -159,6 +162,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          # CI(헤드리스)에서 워크스페이스를 신뢰하도록 하여 자동 승인(YOLO)이 유지되게 함
+          GEMINI_CLI_TRUST_WORKSPACE: "true"
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           gemini_cli_version: latest
