@@ -56,6 +56,13 @@ jobs:
           git config user.name "gemini-issue-bot"
           git config user.email "gemini-issue-bot@users.noreply.github.com"
 
+      # 폴더 신뢰(trusted-folders) 검사는 "신뢰되지 않은 워크스페이스"의 프로젝트 설정을
+      # 무시하므로, 반드시 사용자(홈) 스코프 설정에 비활성화를 기록해야 CI 에서 먹힌다.
+      - name: Disable Gemini CLI folder-trust (headless)
+        run: |
+          mkdir -p "$HOME/.gemini"
+          echo '{"security":{"folderTrust":{"enabled":false}}}' > "$HOME/.gemini/settings.json"
+
       - name: Run Gemini issue handler
         uses: google-github-actions/run-gemini-cli@v0
         env:
@@ -63,17 +70,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           INPUT_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
-          # CI(헤드리스)에서 워크스페이스 신뢰 검사를 건너뛰기 위한 보조 환경변수
-          GEMINI_CLI_TRUST_WORKSPACE: "true"
+          GEMINI_CLI_TRUST_WORKSPACE: "true" # 보조 (버전에 따라 적용)
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           gemini_cli_version: latest
           # 모델을 바꾸려면 아래 한 줄의 주석을 해제하고 원하는 모델 id 를 넣으세요.
           # gemini_model: "gemini-2.5-pro"
-          # security.folderTrust.enabled=false : CI 에서 "not a trusted directory" 에러 방지(핵심)
           settings: |
             {
-              "security": { "folderTrust": { "enabled": false } },
               "model": { "maxSessionTurns": 60 },
               "telemetry": { "enabled": false }
             }
@@ -158,6 +162,11 @@ jobs:
           git config user.name "gemini-review-bot"
           git config user.email "gemini-review-bot@users.noreply.github.com"
 
+      - name: Disable Gemini CLI folder-trust (headless)
+        run: |
+          mkdir -p "$HOME/.gemini"
+          echo '{"security":{"folderTrust":{"enabled":false}}}' > "$HOME/.gemini/settings.json"
+
       - name: Run Gemini review agent
         uses: google-github-actions/run-gemini-cli@v0
         env:
@@ -171,7 +180,6 @@ jobs:
           # gemini_model: "gemini-2.5-pro"
           settings: |
             {
-              "security": { "folderTrust": { "enabled": false } },
               "model": { "maxSessionTurns": 50 },
               "telemetry": { "enabled": false }
             }
