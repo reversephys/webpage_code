@@ -30,13 +30,13 @@ export function getTrackedArticles(): TrackedArticle[] {
 export function trackClick(article: { link: string; title: string; snippet: string }) {
     const articles = getTrackedArticles();
     
-    // 1. 오래된 데이터 먼저 필터링 (30일 기준)
-    const oneMonthAgo = new Date();
-    oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
-    
+    // 1. 오래된 데이터 먼저 필터링 (7일 기준)
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
     let activeArticles = articles.filter(a => {
         const lastClicked = new Date(a.lastClickedAt);
-        return lastClicked >= oneMonthAgo;
+        return lastClicked >= oneWeekAgo;
     });
 
     const index = activeArticles.findIndex((a) => a.link === article.link);
@@ -67,13 +67,13 @@ export function trackClick(article: { link: string; title: string; snippet: stri
 export function getTopIssues(limit: number = 10): TrackedArticle[] {
     const articles = getTrackedArticles();
 
-    // Filter out articles older than 30 days
-    const oneMonthAgo = new Date();
-    oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+    // Filter out articles older than 7 days
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
     const activeArticles = articles.filter(a => {
         const lastClicked = new Date(a.lastClickedAt);
-        return lastClicked >= oneMonthAgo;
+        return lastClicked >= oneWeekAgo;
     });
 
     // Save back if any articles were pruned
