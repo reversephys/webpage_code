@@ -46,18 +46,25 @@
 - PR 본문에 `Closes #<이슈번호>` 를 포함해 이슈 자동 종료
 - PR 제목·본문은 한국어로 작성하고, 무엇을 왜 바꿨는지 요약
 
-## 테스트
+## 테스트 · 검증
 
-이 저장소에는 테스트 러너가 없습니다. 변경 후 아래를 반드시 실행해 통과를 확인하세요.
+이 저장소에는 테스트 러너가 없습니다. 변경 후 아래로 검증하세요.
 
 ```bash
-npx tsc --noEmit   # 타입 체크
-npm run lint       # ESLint
-npm run build      # 프로덕션 빌드 (가능하면)
+npx tsc --noEmit   # 타입 체크 — 반드시 통과해야 함
+npm run lint       # ESLint — 아래 주의사항 참고
 ```
 
-`npm run build`는 시간이 오래 걸리므로, 타입 체크와 린트가 통과하면
-빌드는 변경 범위가 넓을 때만 돌려도 됩니다.
+주의사항 두 가지가 있습니다.
+
+- **`npm run lint`는 현재 exit 0이 아닙니다.** `main` 기준으로 이미 21개의
+  에러(주로 `lib/`, `app/`의 `@typescript-eslint/no-explicit-any`)와 25개의
+  경고가 남아 있습니다. 변경 후 **새 에러가 늘지 않았는지만** 확인하고,
+  이슈와 무관한 기존 에러는 고치지 마세요.
+- **`npm run build`는 PocketBase 서버가 떠 있어야 성공합니다.** 빌드 중
+  페이지가 데이터를 가져오기 때문이며, Dockerfile도 빌드 전에 PocketBase를
+  띄웁니다. 서버가 없는 환경(CI 등)에서는 실행하지 마세요. 로컬에서 돌리려면
+  `backend/pocketbase.exe serve` 를 먼저 실행합니다.
 
 ## 하지 말아야 할 것
 
