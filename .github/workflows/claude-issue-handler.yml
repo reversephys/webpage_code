@@ -10,11 +10,15 @@ on:
   issues:
     types: [opened]
 
-# 아래 3가지 쓰기 권한이 있어야 브랜치/커밋/PR/코멘트가 가능합니다.
+# 아래 권한이 있어야 브랜치/커밋/PR/코멘트가 가능합니다.
+# id-token 은 claude-code-action 이 OIDC 토큰을 발급받아 Claude GitHub App
+# 토큰으로 교환하는 데 필수입니다. 없으면 러너에 ACTIONS_ID_TOKEN_REQUEST_URL
+# 이 주입되지 않아 "Could not fetch an OIDC token" 으로 실패합니다.
 permissions:
   contents: write        # 브랜치 생성 · 커밋
   pull-requests: write   # PR 생성
   issues: write          # 이슈 코멘트
+  id-token: write        # OIDC 토큰 발급 (claude-code-action 필수)
 
 jobs:
   handle-issue:
