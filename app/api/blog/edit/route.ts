@@ -64,10 +64,6 @@ export async function POST(request: NextRequest) {
             fs.mkdirSync(imagesDir, { recursive: true });
         }
 
-        // Store the original title (folder names strip special characters
-        // to stay filesystem-safe, so the real title lives here instead).
-        fs.writeFileSync(path.join(folderPath, "title.txt"), title.trim(), "utf-8");
-
         // Delete removed images
         for (const imgName of deletedImages) {
             const imgPath = path.join(imagesDir, imgName);

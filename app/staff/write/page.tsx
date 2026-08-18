@@ -276,7 +276,8 @@ function StaffWriteEditor() {
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="Enter post title..."
-                        className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-lg font-serif focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors"
+                        disabled={!!editSlug}
+                        className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-lg font-serif focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                 </div>
 
