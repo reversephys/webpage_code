@@ -94,6 +94,18 @@ function extractExcerpt(content: string): string {
 }
 
 /**
+ * Read the original title from title.txt if present.
+ * Posts created before title.txt was introduced fall back to the
+ * folder-name-derived title (which strips special characters).
+ */
+function readStoredTitle(folderPath: string): string | null {
+    const titlePath = path.join(folderPath, "title.txt");
+    if (!fs.existsSync(titlePath)) return null;
+    const title = fs.readFileSync(titlePath, "utf-8").trim();
+    return title || null;
+}
+
+/**
  * Find first image in the images/ subdirectory
  */
 function findThumbnail(folderPath: string, slug: string): string | null {
@@ -140,7 +152,7 @@ export async function getAllPosts(): Promise<BlogPost[]> {
 
         const post: BlogPost = {
             slug,
-            title: parsed.title.replace(/-/g, " "),
+            title: readStoredTitle(folderPath) ?? parsed.title.replace(/-/g, " "),
             date: formatDate(parsed.rawDate),
             rawDate: parsed.rawDate,
             tag: parsed.tag,
@@ -218,7 +230,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
 
             return {
                 slug,
-                title: parsed.title.replace(/-/g, " "),
+                title: readStoredTitle(folderPath) ?? parsed.title.replace(/-/g, " "),
                 date: formatDate(parsed.rawDate),
                 rawDate: parsed.rawDate,
                 tag,
