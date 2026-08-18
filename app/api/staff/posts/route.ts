@@ -12,8 +12,8 @@ export async function GET() {
     const user = await getServerUserFromCookie();
     const permGroup = user?.permission_group !== undefined ? Number(user.permission_group) : -1;
     
-    if (permGroup < 4) {
-        return NextResponse.json({ error: "Forbidden: permission >= 4 required" }, { status: 403 });
+    if (permGroup < 3) {
+        return NextResponse.json({ error: "Forbidden: permission >= 3 required" }, { status: 403 });
     }
     
     const hasAccess = true;
