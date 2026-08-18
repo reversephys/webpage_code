@@ -69,6 +69,10 @@ export async function POST(request: NextRequest) {
 
         fs.mkdirSync(folderPath, { recursive: true });
 
+        // Store the original title (folder names strip special characters
+        // to stay filesystem-safe, so the real title lives here instead).
+        fs.writeFileSync(path.join(folderPath, "title.txt"), title.trim(), "utf-8");
+
         const imagesDir = path.join(folderPath, "images");
         if (preparedImages.length > 0) {
             fs.mkdirSync(imagesDir, { recursive: true });

@@ -51,6 +51,10 @@ export async function POST(request: NextRequest) {
             fs.renameSync(oldFolderPath, newFolderPath);
         }
 
+        // Store the original title (folder names strip special characters
+        // to stay filesystem-safe, so the real title lives here instead).
+        fs.writeFileSync(path.join(newFolderPath, "title.txt"), title.trim(), "utf-8");
+
         // Update MD file - MUST KEEP SAME FILENAME (slug)
         const mdPath = path.join(newFolderPath, `${slug}.md`);
         fs.writeFileSync(mdPath, content, "utf-8");
