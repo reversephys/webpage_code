@@ -40,7 +40,6 @@ export function Navbar() {
     }, []);
 
     const allNavItems: NavItem[] = [
-        { name: "Home", href: "/" },
         { name: "Notice", href: "/notice" },
         {
             name: "POST",
@@ -95,7 +94,7 @@ export function Navbar() {
                 </Link>
 
                 {/* Desktop Menu */}
-                <div className="hidden md:flex items-center space-x-8 h-full">
+                <div className="hidden lg:flex items-center space-x-8 h-full">
                     {navItems.map((item) => {
                         if (item.isDropdown) {
                             const isDropdownOpen = openDropdown === item.name;
@@ -182,7 +181,7 @@ export function Navbar() {
 
                 {/* Mobile Menu Toggle */}
                 <button
-                    className="md:hidden p-2"
+                    className="lg:hidden p-2"
                     onClick={() => setIsOpen(!isOpen)}
                 >
                     {isOpen ? <X size={24} /> : <Menu size={24} />}
@@ -191,7 +190,7 @@ export function Navbar() {
 
             {/* Mobile Menu Dropdown */}
             {isOpen && (
-                <div className="md:hidden absolute top-20 left-0 w-full bg-background border-b border-gray-100 p-6 flex flex-col space-y-4 shadow-lg shadow-black/5 max-h-[calc(100dvh-5rem)] overflow-y-auto z-40">
+                <div className="lg:hidden absolute top-20 left-0 w-full bg-background border-b border-gray-100 p-6 flex flex-col space-y-4 shadow-lg shadow-black/5 max-h-[calc(100dvh-5rem)] overflow-y-auto z-40">
                     {navItems.map((item) => {
                         if (item.isDropdown) {
                             const isExpanded = mobileExpanded === item.name;
