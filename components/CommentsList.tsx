@@ -18,6 +18,7 @@ interface Comment {
     user_id: string;
     content: string;
     created: string;
+    updated?: string;
     expand?: CommentExpand;
 }
 
@@ -39,6 +40,9 @@ export function CommentsList({ postUuid }: { postUuid: string }) {
     const [newComment, setNewComment] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editContent, setEditContent] = useState("");
+    const [busyId, setBusyId] = useState<string | null>(null);
 
     const fetchComments = async () => {
         try {
@@ -102,6 +106,78 @@ export function CommentsList({ postUuid }: { postUuid: string }) {
         }
     };
 
+    const handleUpdate = async (commentId: string) => {
+        if (!editContent.trim()) return;
+
+        setBusyId(commentId);
+        setError("");
+
+        try {
+            const token = await getAuthToken();
+            if (!token) {
+                setError("Not authenticated. Please log in again.");
+                return;
+            }
+
+            const res = await fetch("/api/comments", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+                body: JSON.stringify({ comment_id: commentId, content: editContent }),
+            });
+
+            if (res.ok) {
+                setEditingId(null);
+                setEditContent("");
+                fetchComments();
+            } else {
+                const data = await res.json();
+                setError(data.error || "Failed to update comment.");
+            }
+        } catch {
+            setError("Network error.");
+        } finally {
+            setBusyId(null);
+        }
+    };
+
+    const handleDelete = async (commentId: string) => {
+        if (!confirm("Are you sure you want to delete this comment?")) return;
+
+        setBusyId(commentId);
+        setError("");
+
+        try {
+            const token = await getAuthToken();
+            if (!token) {
+                setError("Not authenticated. Please log in again.");
+                return;
+            }
+
+            const res = await fetch("/api/comments", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+                body: JSON.stringify({ comment_id: commentId }),
+            });
+
+            if (res.ok) {
+                fetchComments();
+            } else {
+                const data = await res.json();
+                setError(data.error || "Failed to delete comment.");
+            }
+        } catch {
+            setError("Network error.");
+        } finally {
+            setBusyId(null);
+        }
+    };
+
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleString("en-US", {
             month: "short", day: "numeric", year: "numeric",
@@ -129,31 +205,89 @@ export function CommentsList({ postUuid }: { postUuid: string }) {
                             ? `/api/user-avatar/${userId}/${avatarFile}`
                             : null;
 
+                        const isAuthor = !!user && user.id === userId;
+                        const canDelete = isAuthor || (!!user && Number(user.permission_group) === 99);
+                        const isEditing = editingId === comment.id;
+                        const busy = busyId === comment.id;
+                        const edited = !!comment.updated && comment.updated !== comment.created;
+
                         return (
                             <div key={comment.id} className="bg-gray-50 dark:bg-gray-800/30 p-4 border border-gray-100 dark:border-gray-800">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
-                                        {avatarUrl ? (
-                                            // eslint-disable-next-line @next/next/no-img-element
-                                            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-gray-500 font-bold text-xs uppercase">
-                                                {getInitial(comment)}
-                                            </span>
-                                        )}
+                                <div className="flex items-center gap-3 mb-2 justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                                            {avatarUrl ? (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span className="text-gray-500 font-bold text-xs uppercase">
+                                                    {getInitial(comment)}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold">
+                                                {comment.expand?.user_id?.username || "Unknown User"}
+                                            </p>
+                                            <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                                                {formatDate(comment.created)}{edited && " (edited)"}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-bold">
-                                            {comment.expand?.user_id?.username || "Unknown User"}
-                                        </p>
-                                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">
-                                            {formatDate(comment.created)}
-                                        </p>
-                                    </div>
+
+                                    {canDelete && !isEditing && (
+                                        <div className="flex gap-2 flex-shrink-0">
+                                            {isAuthor && (
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingId(comment.id);
+                                                        setEditContent(comment.content);
+                                                        setError("");
+                                                    }}
+                                                    className="text-[10px] font-sans uppercase tracking-widest text-gray-400 hover:text-foreground transition-colors"
+                                                >
+                                                    Edit
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => handleDelete(comment.id)}
+                                                disabled={busy}
+                                                className="text-[10px] font-sans uppercase tracking-widest text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                                            >
+                                                {busy ? "..." : "Delete"}
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
-                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                                    {comment.content}
-                                </p>
+
+                                {isEditing ? (
+                                    <div>
+                                        <textarea
+                                            value={editContent}
+                                            onChange={(e) => setEditContent(e.target.value)}
+                                            className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm font-sans focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors min-h-[80px] resize-y"
+                                        />
+                                        <div className="flex justify-end gap-2 mt-2">
+                                            <button
+                                                onClick={() => { setEditingId(null); setEditContent(""); }}
+                                                className="px-4 py-1.5 border border-gray-300 dark:border-gray-600 font-bold uppercase tracking-widest text-[10px] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={() => handleUpdate(comment.id)}
+                                                disabled={busy || !editContent.trim()}
+                                                className="px-4 py-1.5 bg-foreground text-background font-bold uppercase tracking-widest text-[10px] hover:opacity-90 transition-opacity disabled:opacity-50"
+                                            >
+                                                {busy ? "Saving..." : "Save"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                        {comment.content}
+                                    </p>
+                                )}
                             </div>
                         );
                     })}
