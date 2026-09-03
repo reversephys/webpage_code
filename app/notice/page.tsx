@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { NoticePost } from "@/lib/notice";
 import { useAuth } from "@/components/AuthContext";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 
 export default function NoticePage() {
     const router = useRouter();
@@ -92,14 +92,15 @@ export default function NoticePage() {
                 </p>
 
                 {/* Search bar */}
-                <div className="flex gap-2 mb-8">
+                <div className="relative mb-8">
                     <input
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search notice posts..."
-                        className="flex-1 px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm font-sans focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors"
+                        placeholder="Search notices by title, tag, or content..."
+                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm font-sans focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors"
                     />
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 </div>
 
                 {loading ? (
