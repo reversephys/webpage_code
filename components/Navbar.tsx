@@ -191,11 +191,19 @@ export function Navbar() {
             {/* Mobile Menu Dropdown */}
             {isOpen && (
                 <div className="lg:hidden absolute top-20 left-0 w-full bg-background border-b border-gray-100 p-6 flex flex-col space-y-4 shadow-lg shadow-black/5 max-h-[calc(100dvh-5rem)] overflow-y-auto z-40">
-                    {navItems.map((item) => {
+                    {navItems.map((item, index) => {
+                        // The Login block below draws its own top border, so the last
+                        // item must not draw one too — otherwise two rules stack up
+                        // with an empty gap between them.
+                        const isLast = index === navItems.length - 1;
+
                         if (item.isDropdown) {
                             const isExpanded = mobileExpanded === item.name;
                             return (
-                                <div key={item.name} className="flex flex-col space-y-4 border-b border-gray-100/50 dark:border-gray-800/50 pb-2">
+                                <div key={item.name} className={cn(
+                                    "flex flex-col space-y-4 pb-2",
+                                    !isLast && "border-b border-gray-100/50 dark:border-gray-800/50"
+                                )}>
                                     <div
                                         className="flex justify-between items-center"
                                     >
@@ -204,7 +212,7 @@ export function Navbar() {
                                             onClick={() => setIsOpen(false)}
                                             className={cn(
                                             "text-lg font-serif tracking-wide transition-all",
-                                            isExpanded ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-400 hover:ml-2"
+                                            isExpanded ? "text-blue-600 dark:text-blue-400 font-medium" : "hover:ml-2"
                                         )}>
                                             {item.name}
                                         </Link>
@@ -242,7 +250,8 @@ export function Navbar() {
                                 href={item.href!}
                                 onClick={() => setIsOpen(false)}
                                 className={cn(
-                                    "text-lg font-serif tracking-wide hover:ml-2 transition-all border-b border-gray-100/50 dark:border-gray-800/50 pb-2",
+                                    "text-lg font-serif tracking-wide hover:ml-2 transition-all pb-2",
+                                    !isLast && "border-b border-gray-100/50 dark:border-gray-800/50",
                                     pathname === item.href ? "text-blue-600 dark:text-blue-400" : ""
                                 )}
                             >

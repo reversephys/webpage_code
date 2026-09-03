@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/AuthContext";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 
 interface BlogPost {
     slug: string;
@@ -102,21 +102,15 @@ export default function BlogPage() {
                 </p>
 
                 {/* Search bar */}
-                <div className="flex gap-2 mb-8">
+                <div className="relative mb-8">
                     <input
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
-                        placeholder="Search by title, tag, or content..."
-                        className="flex-1 px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm font-sans focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors"
+                        placeholder="Search posts by title, tag, or content..."
+                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm font-sans focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors"
                     />
-                    <button
-                        onClick={() => {/* filtering is real-time via state */ }}
-                        className="px-5 py-2.5 text-sm font-sans uppercase tracking-widest border border-gray-300 dark:border-gray-600 hover:bg-foreground hover:text-background transition-colors"
-                    >
-                        Search
-                    </button>
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 </div>
 
                 {loading ? (
