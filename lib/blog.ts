@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { getTagsForPosts } from "./tags";
+import { stripInlineMarkdown, splitSentences } from "./excerpt";
 
 export interface BlogPost {
     slug: string;
@@ -78,10 +79,10 @@ function extractExcerpt(content: string): string {
 
     if (bodyLines.length === 0) return "";
 
-    const fullText = bodyLines.join(" ");
+    const fullText = stripInlineMarkdown(bodyLines.join(" "));
 
     // Split by sentence endings
-    const sentences = fullText.match(/[^.!?]+[.!?]+/g);
+    const sentences = splitSentences(fullText);
     if (!sentences) return fullText.slice(0, 200);
 
     // If first sentence is long (> 100 chars), return just 1

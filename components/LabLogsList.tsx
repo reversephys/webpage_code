@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronDown } from "lucide-react";
+import { useAuth } from "@/components/AuthContext";
+import { displayTags } from "@/lib/utils";
 
 interface BlogPost {
     slug: string;
@@ -19,6 +21,9 @@ interface BlogPost {
 export default function LabLogsList({ posts }: { posts: BlogPost[] }) {
     const [visibleCount, setVisibleCount] = useState(5);
     const [isMobile, setIsMobile] = useState(false);
+    const { user } = useAuth();
+    const isMember = Number(user?.permission_group ?? 0) >= 3;
+    const tagsOf = (tag: string) => displayTags(tag, isMember).join(", ");
     const loaderRef = useRef<HTMLDivElement | null>(null);
 
     // Detect mobile screens (width < 768px)
@@ -101,18 +106,20 @@ export default function LabLogsList({ posts }: { posts: BlogPost[] }) {
                 {visiblePosts.map((post, index) => (
                     <Link href={`/blog/${post.slug}`} key={post.slug} className="block">
                         <div className={`group cursor-pointer ${index > 0 ? 'pt-6 border-t border-gray-100 dark:border-gray-900' : ''}`}>
-                            <span className="block text-sm font-bold uppercase tracking-widest text-gray-400 mb-2">
-                                {post.tag}
-                            </span>
+                            {tagsOf(post.tag) && (
+                                <span className="block text-sm font-bold uppercase tracking-widest text-gray-400 mb-2">
+                                    {tagsOf(post.tag)}
+                                </span>
+                            )}
                             <h3 className="text-2xl font-serif font-bold mb-2 group-hover:underline decoration-1 underline-offset-4">
                                 {post.title}
                             </h3>
-                            <div className="flex gap-6 items-stretch">
+                            <div className="flex gap-6 items-start">
                                 <p className="flex-1 min-w-0 text-gray-600 dark:text-gray-400 leading-relaxed">
                                     {post.excerpt}
                                 </p>
                                 {post.thumbnail && (
-                                    <div className="w-[120px] shrink-0 relative overflow-hidden rounded-sm">
+                                    <div className="w-[120px] aspect-[4/3] shrink-0 relative overflow-hidden rounded-sm">
                                         <Image
                                             src={post.thumbnail}
                                             alt={post.title}
