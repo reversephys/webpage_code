@@ -1,19 +1,25 @@
 "use client";
 
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Image from "next/image";
 
 interface MarkdownRendererProps {
     content: string;
     small?: boolean;
+    /** Keep `blob:` URLs, so a draft can preview images that are not uploaded yet. */
+    allowBlobUrls?: boolean;
 }
 
-export function MarkdownRenderer({ content, small }: MarkdownRendererProps) {
+// react-markdown drops URLs whose protocol it does not know, blob: included.
+const keepBlobUrls = (url: string) => (url.startsWith("blob:") ? url : defaultUrlTransform(url));
+
+export function MarkdownRenderer({ content, small, allowBlobUrls }: MarkdownRendererProps) {
     return (
         <div className={`prose ${small ? 'prose-sm' : 'prose-lg'} dark:prose-invert mx-auto max-w-none`}>
             <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
+                urlTransform={allowBlobUrls ? keepBlobUrls : undefined}
                 components={{
                     h1: ({ children }) => (
                         <h1 className={`${small ? 'text-xl mt-5 mb-2' : 'text-4xl mt-12 mb-6'} font-bold font-serif tracking-tight`}>{children}</h1>

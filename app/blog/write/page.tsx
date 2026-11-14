@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, Suspense } from "react";
+import { useState, useRef, useCallback, useEffect, useDeferredValue, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { pb } from "@/lib/pocketbase";
@@ -31,6 +31,20 @@ const TOOLBAR_ACTIONS = [
     { label: ">", title: "Blockquote", prefix: "> ", suffix: "", placeholder: "quote", newline: true },
 ];
 
+// Clipboard image types the server accepts, and the extension each is saved under.
+const PASTE_IMAGE_EXT: Record<string, string> = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/gif": "gif",
+    "image/webp": "webp",
+};
+
+const isPublicTag = (tag: string) => tag.toLowerCase() === "public";
+
+function splitTags(value: string): string[] {
+    return value.split(",").map((t) => t.trim()).filter(Boolean);
+}
+
 function BlogWriteEditor() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -38,10 +52,17 @@ function BlogWriteEditor() {
     const { user, loading: authLoading } = useAuth();
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const previewRef = useRef<HTMLDivElement>(null);
     const [tab, setTab] = useState<Tab>("write");
+    // Wide screens: preview pane beside the editor. Narrow screens use the tabs instead.
+    const [showPreview, setShowPreview] = useState(true);
     const [title, setTitle] = useState("");
     const [tag, setTag] = useState("");
+    // Stored as the `public` tag; chosen with buttons instead of typed.
+    const [isPublic, setIsPublic] = useState(false);
     const [content, setContent] = useState("");
+    // The preview may lag a keystroke behind so typing stays smooth on long posts.
+    const deferredContent = useDeferredValue(content);
     const [images, setImages] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<{ name: string; url: string }[]>([]);
     const [existingImages, setExistingImages] = useState<ExistingImage[]>([]);
@@ -71,7 +92,9 @@ function BlogWriteEditor() {
                 }
                 const data = await res.json();
                 setTitle(data.title || "");
-                setTag(data.tag || "");
+                const loadedTags = splitTags(data.tag || "");
+                setIsPublic(loadedTags.some(isPublicTag));
+                setTag(loadedTags.filter((t) => !isPublicTag(t)).join(", "));
                 setContent(data.content || "");
                 setExistingImages(data.images || []);
             } catch {
@@ -117,18 +140,54 @@ function BlogWriteEditor() {
 
     if (!user) return null;
 
+    const addImages = (files: File[]) => {
+        setImages((prev) => [...prev, ...files]);
+        setImagePreviews((prev) => [
+            ...prev,
+            ...files.map((file) => ({ name: file.name, url: URL.createObjectURL(file) })),
+        ]);
+    };
+
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
+        addImages(files);
+    };
 
-        const newImages = [...images, ...files];
-        setImages(newImages);
+    // Pasting an image (a screenshot, or "Copy image") attaches it and puts its
+    // reference at the cursor, instead of attach -> hover -> Insert.
+    const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        const pasted = Array.from(e.clipboardData.files).filter((file) => PASTE_IMAGE_EXT[file.type]);
+        // Text copied from an office app can carry a picture of itself; keep the text then.
+        if (pasted.length === 0 || e.clipboardData.getData("text/plain")) return;
 
-        const newPreviews = files.map((file) => ({
-            name: file.name,
-            url: URL.createObjectURL(file),
-        }));
-        setImagePreviews([...imagePreviews, ...newPreviews]);
+        e.preventDefault();
+        // Clipboard images all arrive as "image.png"; the server maps references by name.
+        const stamp = Date.now().toString(36);
+        const files = pasted.map((file, i) =>
+            new File([file], `pasted-${stamp}-${i + 1}.${PASTE_IMAGE_EXT[file.type]}`, { type: file.type })
+        );
+        addImages(files);
+
+        const refs = files.map((file) => `![image](images/${file.name})`).join("\n");
+        const textarea = e.currentTarget;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        setContent(content.slice(0, start) + refs + content.slice(end));
+        setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(start + refs.length, start + refs.length);
+        }, 0);
+    };
+
+    // With both panes showing, keep the preview near the part being written.
+    const syncPreviewScroll = () => {
+        const textarea = textareaRef.current;
+        const preview = previewRef.current;
+        if (!textarea || !preview) return;
+        const range = textarea.scrollHeight - textarea.clientHeight;
+        if (range <= 0) return;
+        preview.scrollTop = (textarea.scrollTop / range) * (preview.scrollHeight - preview.clientHeight);
     };
 
     const removeNewImage = (index: number) => {
@@ -163,8 +222,14 @@ function BlogWriteEditor() {
     };
 
     const handlePublish = async () => {
+        // Visibility comes from the buttons; a `public` typed into the tag field
+        // out of habit still counts.
+        const typedTags = splitTags(tag);
+        const tags = typedTags.filter((t) => !isPublicTag(t));
+        if (isPublic || typedTags.some(isPublicTag)) tags.unshift("public");
+
         if (!title.trim()) { setError("Title is required."); return; }
-        if (!tag.trim()) { setError("Tag is required."); return; }
+        if (tags.length === 0) { setError("Tag is required."); return; }
         if (!content.trim()) { setError("Content is required."); return; }
 
         setPublishing(true);
@@ -172,7 +237,7 @@ function BlogWriteEditor() {
 
         const formData = new FormData();
         formData.append("title", title.trim());
-        formData.append("tag", tag.trim());
+        formData.append("tag", tags.join(", "));
         formData.append("content", content);
 
         if (editSlug) {
@@ -227,7 +292,7 @@ function BlogWriteEditor() {
     };
 
     // Build preview content
-    const previewContent = content.replace(
+    const previewContent = deferredContent.replace(
         /!\[([^\]]*)\]\(images\/([^)]+)\)/g,
         (match, alt, filename) => {
             // Check new image previews first
@@ -252,7 +317,8 @@ function BlogWriteEditor() {
 
     return (
         <main className="min-h-screen bg-background pt-32 pb-20 px-6 font-serif">
-            <div className="max-w-4xl mx-auto">
+            {/* With the preview pane open, wide screens get more room for the two panes. */}
+            <div className={`max-w-4xl ${showPreview ? "lg:max-w-7xl" : ""} mx-auto`}>
                 {/* Back link */}
                 <Link
                     href="/blog"
@@ -281,19 +347,47 @@ function BlogWriteEditor() {
                     />
                 </div>
 
-                {/* Tag input */}
-                <div className="mb-8">
-                    <label className="block text-xs font-sans uppercase tracking-widest text-gray-400 mb-1">Tag</label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 font-sans break-keep">
-                        게시글을 분류하는 태그입니다. <span className="font-semibold text-gray-700 dark:text-gray-300">public</span>을 입력하면 전체공개 글로 설정되며, <span className="font-semibold text-gray-700 dark:text-gray-300">pinned</span>를 입력하면 게시판 상단에 고정됩니다.
-                    </p>
-                    <input
-                        type="text"
-                        value={tag}
-                        onChange={(e) => setTag(e.target.value)}
-                        placeholder="e.g. reversing, firmware, hardware..."
-                        className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-base font-sans focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
+                {/* Tag input + visibility */}
+                <div className="mb-8 flex flex-col md:flex-row md:items-end gap-6">
+                    <div className="flex-1">
+                        <label className="block text-xs font-sans uppercase tracking-widest text-gray-400 mb-1">Tag</label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 font-sans break-keep">
+                            게시글을 분류하는 태그입니다. <span className="font-semibold text-gray-700 dark:text-gray-300">pinned</span>를 입력하면 게시판 상단에 고정됩니다.
+                        </p>
+                        <input
+                            type="text"
+                            value={tag}
+                            onChange={(e) => setTag(e.target.value)}
+                            placeholder="e.g. reversing, firmware, hardware..."
+                            className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-base font-sans focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                    </div>
+
+                    <div>
+                        <span className="block text-xs font-sans uppercase tracking-widest text-gray-400 mb-1">Visibility</span>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 font-sans break-keep">
+                            {isPublic ? "누구나 볼 수 있습니다." : "멤버만 볼 수 있습니다."}
+                        </p>
+                        <div role="group" aria-label="Visibility" className="inline-flex border border-gray-200 dark:border-gray-700">
+                            {[
+                                { value: true, label: "Public" },
+                                { value: false, label: "Private" },
+                            ].map((option) => (
+                                <button
+                                    key={option.label}
+                                    type="button"
+                                    aria-pressed={isPublic === option.value}
+                                    onClick={() => setIsPublic(option.value)}
+                                    className={`px-6 py-3 text-sm leading-6 font-sans uppercase tracking-widest transition-colors ${isPublic === option.value
+                                        ? "bg-foreground text-background"
+                                        : "bg-white dark:bg-gray-900 text-gray-400 hover:text-foreground"
+                                        }`}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Markdown Editor */}
@@ -310,10 +404,20 @@ function BlogWriteEditor() {
                                 {action.label}
                             </button>
                         ))}
+                        <button
+                            type="button"
+                            aria-pressed={showPreview}
+                            onClick={() => setShowPreview(!showPreview)}
+                            title={showPreview ? "Hide preview" : "Show preview"}
+                            className={`hidden lg:inline-flex items-center gap-1.5 ml-auto px-2.5 py-1.5 text-xs font-sans uppercase tracking-widest rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 ${showPreview ? "text-foreground" : "text-gray-400"}`}
+                        >
+                            {showPreview ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                            Preview
+                        </button>
                     </div>
 
-                    {/* WRITE / PREVIEW tabs */}
-                    <div className="flex border-b border-gray-200 dark:border-gray-700">
+                    {/* WRITE / PREVIEW tabs — narrow screens only; wide screens show both panes */}
+                    <div className="flex lg:hidden border-b border-gray-200 dark:border-gray-700">
                         <button
                             onClick={() => setTab("write")}
                             className={`flex-1 py-3 text-sm font-sans uppercase tracking-widest text-center transition-colors ${tab === "write"
@@ -334,31 +438,41 @@ function BlogWriteEditor() {
                         </button>
                     </div>
 
+                    <div className={`hidden ${showPreview ? "lg:grid" : ""} grid-cols-2 border-b border-gray-200 dark:border-gray-700 text-sm font-sans uppercase tracking-widest text-gray-400 text-center`}>
+                        <span className="py-3">Write</span>
+                        <span className="py-3 border-l border-gray-200 dark:border-gray-700">Preview</span>
+                    </div>
+
                     {/* Editor / Preview area */}
-                    <div className="min-h-[400px]">
-                        {tab === "write" ? (
-                            <textarea
-                                ref={textareaRef}
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                                placeholder="Write your post in Markdown..."
-                                className="w-full h-[400px] px-6 py-5 bg-transparent text-base font-mono leading-relaxed resize-y focus:outline-none placeholder:text-gray-300 dark:placeholder:text-gray-600"
-                            />
-                        ) : (
-                            <div className="px-6 py-5">
-                                {previewContent.trim() ? (
-                                    <MarkdownRenderer content={previewContent} />
-                                ) : (
-                                    <p className="text-gray-400 italic">Nothing to preview yet.</p>
-                                )}
-                            </div>
-                        )}
+                    <div className={`min-h-[400px] ${showPreview ? "lg:grid lg:grid-cols-2" : ""}`}>
+                        <textarea
+                            ref={textareaRef}
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            onPaste={handlePaste}
+                            onScroll={syncPreviewScroll}
+                            placeholder="Write your post in Markdown..."
+                            className={`${tab === "write" ? "block" : "hidden"} lg:block w-full h-[400px] ${showPreview ? "lg:h-[640px] lg:resize-none" : ""} px-6 py-5 bg-transparent text-base font-mono leading-relaxed resize-y focus:outline-none placeholder:text-gray-300 dark:placeholder:text-gray-600`}
+                        />
+                        <div
+                            ref={previewRef}
+                            className={`${tab === "preview" ? "block" : "hidden"} ${showPreview ? "lg:block" : "lg:hidden"} px-6 py-5 lg:h-[640px] lg:overflow-y-auto lg:border-l border-gray-200 dark:border-gray-700`}
+                        >
+                            {previewContent.trim() ? (
+                                <MarkdownRenderer content={previewContent} allowBlobUrls />
+                            ) : (
+                                <p className="text-gray-400 italic">Nothing to preview yet.</p>
+                            )}
+                        </div>
                     </div>
                 </div>
 
                 {/* Image Upload */}
                 <div className="mt-8 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
-                    <label className="block text-xs font-sans uppercase tracking-widest text-gray-400 mb-4">Attach Images</label>
+                    <label className="block text-xs font-sans uppercase tracking-widest text-gray-400 mb-1">Attach Images</label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 font-sans break-keep">
+                        본문에 이미지를 붙여넣으면(Ctrl+V) 자동으로 첨부되고 커서 위치에 들어갑니다.
+                    </p>
                     <input
                         type="file"
                         accept="image/*"
