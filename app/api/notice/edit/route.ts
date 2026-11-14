@@ -4,6 +4,7 @@ import path from "path";
 import PocketBase from "pocketbase";
 import { CONTENTS_DIR, getPostFolderName } from "@/lib/notice";
 import { verifyAuth, unauthorizedResponse } from "@/lib/auth-server";
+import { writeStoredTitle } from "@/lib/post-title";
 
 export async function POST(request: NextRequest) {
     const user = await verifyAuth(request);
@@ -41,7 +42,9 @@ export async function POST(request: NextRequest) {
         }
         const timestamp = match[1];
 
-        const safeTitle = title.replace(/[^a-zA-Z0-9가-힣\s-]/g, "").trim().replace(/\s+/g, "-");
+        // A title made only of characters the folder name drops (e.g. "???")
+        // would leave this empty and the folder unparseable.
+        const safeTitle = title.replace(/[^a-zA-Z0-9가-힣\s-]/g, "").trim().replace(/\s+/g, "-") || "untitled";
         const safeTag = tag.replace(/[^a-zA-Z0-9가-힣\s-]/g, "").trim().replace(/\s+/g, "-");
         const newFolderName = `${timestamp}_${safeTag}_${safeTitle}`;
         const newFolderPath = path.join(CONTENTS_DIR, newFolderName);
@@ -54,6 +57,9 @@ export async function POST(request: NextRequest) {
         // Update MD file - MUST KEEP SAME FILENAME (slug)
         const mdPath = path.join(newFolderPath, `${slug}.md`);
         fs.writeFileSync(mdPath, content, "utf-8");
+
+        // Keep the title as typed; the folder name only has its safe characters.
+        writeStoredTitle(newFolderPath, title);
 
         // Handle images
         const imagesDir = path.join(newFolderPath, "images");

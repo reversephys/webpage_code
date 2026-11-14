@@ -5,6 +5,7 @@ import crypto from "crypto";
 import PocketBase from "pocketbase";
 import { getPostFolderName, CONTENTS_DIR, getPostBySlug } from "@/lib/blog";
 import { verifyAuth, unauthorizedResponse } from "@/lib/auth-server";
+import { writeStoredTitle } from "@/lib/post-title";
 
 function containsDangerousContent(content: string): boolean {
     const lowerContent = content.toLowerCase();
@@ -104,6 +105,9 @@ export async function POST(request: NextRequest) {
             const uuid = generateUUID();
             fs.writeFileSync(path.join(folderPath, `${uuid}.md`), processedContent, "utf-8");
         }
+
+        // Keep the title as typed; the folder name only has its safe characters.
+        writeStoredTitle(folderPath, title);
 
         // Sync tags to PocketBase
         try {

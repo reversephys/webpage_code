@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { readStoredTitle } from "./post-title";
 import { getTagsForPosts } from "./tags";
 
 export interface BlogPost {
@@ -140,7 +141,7 @@ export async function getAllPosts(): Promise<BlogPost[]> {
 
         const post: BlogPost = {
             slug,
-            title: parsed.title.replace(/-/g, " "),
+            title: readStoredTitle(folderPath) ?? parsed.title.replace(/-/g, " "),
             date: formatDate(parsed.rawDate),
             rawDate: parsed.rawDate,
             tag: parsed.tag,
@@ -218,7 +219,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
 
             return {
                 slug,
-                title: parsed.title.replace(/-/g, " "),
+                title: readStoredTitle(folderPath) ?? parsed.title.replace(/-/g, " "),
                 date: formatDate(parsed.rawDate),
                 rawDate: parsed.rawDate,
                 tag,

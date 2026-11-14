@@ -5,6 +5,7 @@ import crypto from "crypto";
 import PocketBase from "pocketbase";
 import { verifyAuth, unauthorizedResponse } from "@/lib/auth-server";
 import { getValidatedExt, isAllowedImageBuffer } from "@/lib/image-validation";
+import { writeStoredTitle } from "@/lib/post-title";
 
 const CONTENTS_DIR = path.join(process.cwd(), "..", "Contents", "BLOG");
 
@@ -139,6 +140,9 @@ export async function POST(request: NextRequest) {
             processedContent,
             "utf-8"
         );
+
+        // Keep the title as typed; the folder name only has its safe characters.
+        writeStoredTitle(folderPath, title);
 
         // Sync tags to PocketBase
         try {
