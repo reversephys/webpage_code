@@ -46,7 +46,9 @@ export default async function Home() {
 
           {/* Left Column: Intro & Hot Issues */}
           {/* Using contents on mobile so children act as direct grid items, block on desktop */}
-          <div className="contents md:block space-y-12">
+          {/* On desktop it stays in view while the longer right column scrolls, instead of
+              leaving an empty gap below it. If it outgrows the screen it scrolls on its own. */}
+          <div className="contents md:block space-y-12 md:sticky md:top-32 md:max-h-[calc(100vh-10rem)] md:overflow-y-auto md:[scrollbar-width:none]">
             {/* Intro (Order 1 on Mobile) */}
             <div className="space-y-6 order-1">
               <h2 className="text-5xl md:text-6xl font-serif font-bold leading-tight">
