@@ -25,4 +25,10 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), sans-serif;
+  /* Korean: wrap between words, not in the middle of one. */
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  /* Playfair defaults to old-style figures, which makes versions and model
+     names (2.7.6, B210, n78) sit at uneven heights. */
+  font-variant-numeric: lining-nums;
 }
