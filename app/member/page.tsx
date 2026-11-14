@@ -35,12 +35,12 @@ export default function MemberPage() {
                 {loading ? (
                     <div className="text-center text-gray-400">Loading members...</div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
                         {members.map(member => (
-                            <div key={member.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 flex flex-col items-center text-center shadow-sm hover:shadow-md transition-shadow">
+                            <div key={member.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 md:p-6 flex flex-col items-center text-center shadow-sm hover:shadow-md transition-shadow">
 
                                 {/* Avatar */}
-                                <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 mb-4 border border-gray-200 dark:border-gray-700 shrink-0">
+                                <div className="w-16 h-16 md:w-24 md:h-24 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 mb-4 border border-gray-200 dark:border-gray-700 shrink-0">
                                     {member.avatar ? (
                                         <img
                                             src={member.avatar}
@@ -48,31 +48,29 @@ export default function MemberPage() {
                                             className="w-full h-full object-cover"
                                         />
                                     ) : (
-                                        <div className="flex items-center justify-center w-full h-full text-xs text-gray-400 uppercase tracking-widest font-sans">
-                                            No Img
+                                        <div className="flex items-center justify-center w-full h-full text-2xl md:text-3xl font-bold text-gray-400 dark:text-gray-500 uppercase">
+                                            {member.name.charAt(0)}
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Name */}
-                                <h2 className="text-2xl font-bold tracking-wide text-gray-900 dark:text-gray-100 mb-1">
+                                <h2 className="max-w-full text-lg md:text-2xl font-bold tracking-wide break-words text-gray-900 dark:text-gray-100 mb-1">
                                     {member.name}
                                 </h2>
                                 <p className="text-xs font-sans uppercase tracking-widest text-gray-500 mb-1">
                                     Researcher
                                 </p>
 
-                                {/* Introduction */}
-                                <div
-                                    className="mt-6 w-full text-left p-4 bg-gray-50 dark:bg-gray-800/50 rounded-md"
-                                    style={{ maxHeight: '140px', overflowY: 'auto' }}
-                                >
-                                    {member.introduction ? (
+                                {/* Introduction — only for members who wrote one */}
+                                {member.introduction?.trim() && (
+                                    <div
+                                        className="mt-4 md:mt-6 w-full text-left p-3 md:p-4 bg-gray-50 dark:bg-gray-800/50 rounded-md break-words"
+                                        style={{ maxHeight: '140px', overflowY: 'auto' }}
+                                    >
                                         <MarkdownRenderer content={member.introduction} small />
-                                    ) : (
-                                        <p className="italic text-gray-400 text-center text-[12px] font-sans">No introduction provided.</p>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

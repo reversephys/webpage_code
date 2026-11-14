@@ -118,11 +118,11 @@ export default function BlogPage() {
                 ) : (
                     <div className="space-y-6">
                         {sortedPosts.slice(0, visibleCount).map((post) => (
-                            <div key={post.slug} className={`group grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6 items-start border-b border-gray-100 dark:border-gray-800 pb-6 ${post.tag.includes('pinned') ? 'bg-gray-50/50 dark:bg-gray-900/50 -mx-4 px-4 rounded-lg pt-4' : ''}`}>
+                            <div key={post.slug} className={`group grid grid-cols-1 ${post.thumbnail ? 'md:grid-cols-[200px_1fr]' : ''} gap-6 items-start border-b border-gray-100 dark:border-gray-800 pb-6 ${post.tag.includes('pinned') ? 'bg-gray-50/50 dark:bg-gray-900/50 -mx-4 px-4 rounded-lg pt-4' : ''}`}>
 
-                                {/* Thumbnail */}
-                                <div className="w-full h-[150px] md:h-[150px] rounded-sm overflow-hidden bg-gray-100 dark:bg-gray-800">
-                                    {post.thumbnail ? (
+                                {/* Thumbnail — posts without an image use the full width instead of an empty box */}
+                                {post.thumbnail && (
+                                    <div className="w-full h-[150px] md:h-[150px] rounded-sm overflow-hidden bg-gray-100 dark:bg-gray-800">
                                         <Image
                                             src={post.thumbnail}
                                             alt={post.title}
@@ -130,10 +130,8 @@ export default function BlogPage() {
                                             height={150}
                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                         />
-                                    ) : (
-                                        <div className="w-full h-full bg-neutral-100 dark:bg-neutral-800 group-hover:scale-105 transition-transform duration-500" />
-                                    )}
-                                </div>
+                                    </div>
+                                )}
 
                                 {/* Content */}
                                 <div>
