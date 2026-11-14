@@ -21,6 +21,16 @@
   }
 }
 
+/*
+ * Serif headings keep the display cut (Playfair Display); `font-serif` running
+ * text uses the text cut. Left outside the cascade layers on purpose, so it
+ * also reaches headings that carry the `font-serif` utility themselves.
+ */
+.font-serif:is(h1, h2, h3, h4, h5, h6),
+.font-serif :is(h1, h2, h3, h4, h5, h6):not(.font-sans, .font-mono, .font-eczar) {
+  font-family: var(--font-playfair-display), serif;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
