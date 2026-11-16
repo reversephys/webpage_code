@@ -47,6 +47,7 @@ export function Navbar() {
             isDropdown: true,
             subItems: [
                 { name: "Blog", href: "/blog" },
+                { name: "Knowledge", href: "/knowledge" },
                 { name: "Feed", href: "/feed" },
                 { name: "Skills", href: "/skills", auth: true, minPermission: 3 },
                 { name: "Staff", href: "/staff", auth: true, minPermission: 4 },
