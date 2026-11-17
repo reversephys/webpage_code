@@ -21,6 +21,7 @@ export async function GET(
         title: post.title,
         tag: post.tag,
         content: rawContent,
+        thumbnail: post.thumbnail,
         images: images.map((img) => ({
             name: img,
             url: `/api/blog-image/${slug}/${img}`,

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, Suspense } from "react";
+import { useState, useRef, useCallback, useEffect, useDeferredValue, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { pb } from "@/lib/pocketbase";
 import { useAuth } from "@/components/AuthContext";
+import { buildTags, isSupportedImage, isThumbnailFile, nameImages, parseTags, referencedImages } from "@/lib/post-editor";
 
 type Tab = "write" | "preview";
 
@@ -31,6 +32,8 @@ const TOOLBAR_ACTIONS = [
     { label: ">", title: "Blockquote", prefix: "> ", suffix: "", placeholder: "quote", newline: true },
 ];
 
+const IMAGE_ACCEPT = "image/png,image/jpeg,image/gif,image/webp";
+
 function BlogWriteEditor() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -38,14 +41,33 @@ function BlogWriteEditor() {
     const { user, loading: authLoading } = useAuth();
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const previewRef = useRef<HTMLDivElement>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
+    const thumbnailInputRef = useRef<HTMLInputElement>(null);
     const [tab, setTab] = useState<Tab>("write");
+    // Wide screens: preview pane beside the editor. Narrow screens use the tabs instead.
+    const [showPreview, setShowPreview] = useState(true);
     const [title, setTitle] = useState("");
     const [tag, setTag] = useState("");
+    // Stored as the `public` tag; chosen with buttons instead of typed.
+    const [isPublic, setIsPublic] = useState(false);
     const [content, setContent] = useState("");
+    // The preview may lag a keystroke behind so typing stays smooth on long posts.
+    const deferredContent = useDeferredValue(content);
+    // Images added while writing (pasted or picked); uploaded on save.
     const [images, setImages] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<{ name: string; url: string }[]>([]);
+    // Images the post already has on the server (edit mode).
     const [existingImages, setExistingImages] = useState<ExistingImage[]>([]);
-    const [deletedImages, setDeletedImages] = useState<string[]>([]);
+    // Which of those the body used when it was loaded. One dropped from the body
+    // since then is deleted on save; one that was never in it is left alone.
+    const [loadedRefs, setLoadedRefs] = useState<Set<string>>(new Set());
+    // List thumbnail: the one on the server (`picked` when the author chose it,
+    // otherwise it is a body image used automatically), and a newly picked one.
+    const [savedThumbnail, setSavedThumbnail] = useState<{ url: string | null; picked: boolean }>({ url: null, picked: false });
+    const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+    const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+    const [removeThumbnail, setRemoveThumbnail] = useState(false);
     const [publishing, setPublishing] = useState(false);
     const [loading, setLoading] = useState(!!editSlug);
     const [error, setError] = useState<string | null>(null);
@@ -70,10 +92,18 @@ function BlogWriteEditor() {
                     return;
                 }
                 const data = await res.json();
+                const loadedTags = parseTags(data.tag || "");
+                const loadedImages: ExistingImage[] = data.images || [];
                 setTitle(data.title || "");
-                setTag(data.tag || "");
+                setIsPublic(loadedTags.isPublic);
+                setTag(loadedTags.tags.join(", "));
                 setContent(data.content || "");
-                setExistingImages(data.images || []);
+                setExistingImages(loadedImages.filter((img) => !isThumbnailFile(img.name)));
+                setLoadedRefs(referencedImages(data.content || ""));
+                setSavedThumbnail({
+                    url: data.thumbnail || null,
+                    picked: loadedImages.some((img) => isThumbnailFile(img.name)),
+                });
             } catch {
                 setError("Failed to load post data.");
             } finally {
@@ -117,69 +147,125 @@ function BlogWriteEditor() {
 
     if (!user) return null;
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []);
-        if (files.length === 0) return;
+    // Add images to the post and put their references at the cursor. Used for
+    // pasted images and for ones picked with the toolbar button.
+    const insertImages = (files: File[]) => {
+        const named = nameImages(files);
+        setError(named.length < files.length ? "Only PNG, JPG, GIF and WebP images can be added." : null);
+        if (named.length === 0) return;
 
-        const newImages = [...images, ...files];
-        setImages(newImages);
+        setImages((prev) => [...prev, ...named]);
+        setImagePreviews((prev) => [
+            ...prev,
+            ...named.map((file) => ({ name: file.name, url: URL.createObjectURL(file) })),
+        ]);
 
-        const newPreviews = files.map((file) => ({
-            name: file.name,
-            url: URL.createObjectURL(file),
-        }));
-        setImagePreviews([...imagePreviews, ...newPreviews]);
-    };
-
-    const removeNewImage = (index: number) => {
-        const newImages = images.filter((_, i) => i !== index);
-        const newPreviews = imagePreviews.filter((_, i) => i !== index);
-        URL.revokeObjectURL(imagePreviews[index].url);
-        setImages(newImages);
-        setImagePreviews(newPreviews);
-    };
-
-    const removeExistingImage = (index: number) => {
-        const img = existingImages[index];
-        setDeletedImages([...deletedImages, img.name]);
-        setExistingImages(existingImages.filter((_, i) => i !== index));
-    };
-
-    const insertImageRef = (imageName: string) => {
+        const refs = named.map((file) => `![image](images/${file.name})`).join("\n");
         const textarea = textareaRef.current;
-        const ref = `![${imageName}](images/${imageName})`;
-        if (textarea) {
-            const pos = textarea.selectionStart;
-            const newContent = content.slice(0, pos) + ref + content.slice(pos);
-            setContent(newContent);
-            setTimeout(() => {
-                textarea.focus();
-                const cursorPos = pos + ref.length;
-                textarea.setSelectionRange(cursorPos, cursorPos);
-            }, 0);
+        const start = textarea ? textarea.selectionStart : content.length;
+        const end = textarea ? textarea.selectionEnd : content.length;
+        setContent(content.slice(0, start) + refs + content.slice(end));
+        setTab("write");
+        setTimeout(() => {
+            if (!textarea) return;
+            textarea.focus();
+            textarea.setSelectionRange(start + refs.length, start + refs.length);
+        }, 0);
+    };
+
+    // Pasting an image (a screenshot, or "Copy image") drops it into the post.
+    const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        const pasted = Array.from(e.clipboardData.files).filter(isSupportedImage);
+        // Text copied from an office app can carry a picture of itself; keep the text then.
+        if (pasted.length === 0 || e.clipboardData.getData("text/plain")) return;
+
+        e.preventDefault();
+        insertImages(pasted);
+    };
+
+    const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        e.target.value = "";
+        if (files.length > 0) insertImages(files);
+    };
+
+    const handleThumbnailPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        if (!isSupportedImage(file)) {
+            setError("Only PNG, JPG, GIF and WebP images can be used as a thumbnail.");
+            return;
+        }
+        setError(null);
+        if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+        setThumbnailFile(file);
+        setThumbnailPreview(URL.createObjectURL(file));
+        setRemoveThumbnail(false);
+    };
+
+    // Drop a newly picked thumbnail, or mark the one saved with the post for removal.
+    const handleThumbnailRemove = () => {
+        if (thumbnailFile) {
+            if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+            setThumbnailFile(null);
+            setThumbnailPreview(null);
         } else {
-            setContent(content + "\n" + ref);
+            setRemoveThumbnail(true);
         }
     };
 
+    const shownThumbnail = thumbnailFile ? thumbnailPreview : removeThumbnail ? null : savedThumbnail.url;
+    const canRemoveThumbnail = !!thumbnailFile || (savedThumbnail.picked && !removeThumbnail);
+    const thumbnailStatus = thumbnailFile
+        ? `새로 지정한 이미지입니다: ${thumbnailFile.name}`
+        : removeThumbnail
+            ? "저장하면 지정한 썸네일이 삭제됩니다."
+            : savedThumbnail.picked
+                ? "직접 지정한 썸네일입니다."
+                : savedThumbnail.url
+                    ? "지정한 썸네일이 없어 본문 이미지가 쓰이고 있습니다."
+                    : "지정한 썸네일이 없습니다.";
+
+    // With both panes showing, keep the preview near the part being written.
+    const syncPreviewScroll = () => {
+        const textarea = textareaRef.current;
+        const preview = previewRef.current;
+        if (!textarea || !preview) return;
+        const range = textarea.scrollHeight - textarea.clientHeight;
+        if (range <= 0) return;
+        preview.scrollTop = (textarea.scrollTop / range) * (preview.scrollHeight - preview.clientHeight);
+    };
+
     const handlePublish = async () => {
+        const tags = buildTags(tag, isPublic);
+
         if (!title.trim()) { setError("Title is required."); return; }
-        if (!tag.trim()) { setError("Tag is required."); return; }
+        if (tags.length === 0) { setError("Tag is required."); return; }
         if (!content.trim()) { setError("Content is required."); return; }
 
         setPublishing(true);
         setError(null);
 
+        // Only images the body still points at are uploaded.
+        const used = referencedImages(content);
+        const newImages = images.filter((img) => used.has(img.name));
+
         const formData = new FormData();
         formData.append("title", title.trim());
-        formData.append("tag", tag.trim());
+        formData.append("tag", tags.join(", "));
         formData.append("content", content);
+        if (thumbnailFile) formData.append("thumbnail", thumbnailFile);
 
         if (editSlug) {
             // Edit mode
+            const deletedImages = existingImages
+                .filter((img) => loadedRefs.has(img.name) && !used.has(img.name))
+                .map((img) => img.name);
             formData.append("slug", editSlug);
             formData.append("deletedImages", JSON.stringify(deletedImages));
-            images.forEach((img) => formData.append("newImages", img));
+            if (removeThumbnail) formData.append("removeThumbnail", "true");
+            newImages.forEach((img) => formData.append("newImages", img));
 
             try {
                 const res = await fetch("/api/blog/edit", {
@@ -202,7 +288,7 @@ function BlogWriteEditor() {
             }
         } else {
             // New post mode
-            images.forEach((img) => formData.append("images", img));
+            newImages.forEach((img) => formData.append("images", img));
 
             try {
                 const res = await fetch("/api/blog/publish", {
@@ -227,7 +313,7 @@ function BlogWriteEditor() {
     };
 
     // Build preview content
-    const previewContent = content.replace(
+    const previewContent = deferredContent.replace(
         /!\[([^\]]*)\]\(images\/([^)]+)\)/g,
         (match, alt, filename) => {
             // Check new image previews first
@@ -252,7 +338,9 @@ function BlogWriteEditor() {
 
     return (
         <main className="min-h-screen bg-background pt-32 pb-20 px-6 font-serif">
-            <div className="max-w-4xl mx-auto">
+            {/* Wide screens leave room for the editor and its preview side by side. The width
+                is the same with the preview closed, so toggling it does not move the page. */}
+            <div className="max-w-4xl lg:max-w-7xl mx-auto">
                 {/* Back link */}
                 <Link
                     href="/blog"
@@ -281,19 +369,47 @@ function BlogWriteEditor() {
                     />
                 </div>
 
-                {/* Tag input */}
-                <div className="mb-8">
-                    <label className="block text-xs font-sans uppercase tracking-widest text-gray-400 mb-1">Tag</label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 font-sans break-keep">
-                        게시글을 분류하는 태그입니다. <span className="font-semibold text-gray-700 dark:text-gray-300">public</span>을 입력하면 전체공개 글로 설정되며, <span className="font-semibold text-gray-700 dark:text-gray-300">pinned</span>를 입력하면 게시판 상단에 고정됩니다.
-                    </p>
-                    <input
-                        type="text"
-                        value={tag}
-                        onChange={(e) => setTag(e.target.value)}
-                        placeholder="e.g. reversing, firmware, hardware..."
-                        className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-base font-sans focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
+                {/* Tag input + visibility */}
+                <div className="mb-8 flex flex-col md:flex-row md:items-end gap-6">
+                    <div className="flex-1">
+                        <label className="block text-xs font-sans uppercase tracking-widest text-gray-400 mb-1">Tag</label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 font-sans break-keep">
+                            게시글을 분류하는 태그입니다. <span className="font-semibold text-gray-700 dark:text-gray-300">pinned</span>를 입력하면 게시판 상단에 고정됩니다.
+                        </p>
+                        <input
+                            type="text"
+                            value={tag}
+                            onChange={(e) => setTag(e.target.value)}
+                            placeholder="e.g. reversing, firmware, hardware..."
+                            className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-base font-sans focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                    </div>
+
+                    <div>
+                        <span className="block text-xs font-sans uppercase tracking-widest text-gray-400 mb-1">Visibility</span>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 font-sans break-keep">
+                            {isPublic ? "누구나 볼 수 있습니다." : "멤버만 볼 수 있습니다."}
+                        </p>
+                        <div role="group" aria-label="Visibility" className="inline-flex border border-gray-200 dark:border-gray-700">
+                            {[
+                                { value: true, label: "Public" },
+                                { value: false, label: "Private" },
+                            ].map((option) => (
+                                <button
+                                    key={option.label}
+                                    type="button"
+                                    aria-pressed={isPublic === option.value}
+                                    onClick={() => setIsPublic(option.value)}
+                                    className={`px-6 py-3 text-sm leading-6 font-sans uppercase tracking-widest transition-colors ${isPublic === option.value
+                                        ? "bg-foreground text-background"
+                                        : "bg-white dark:bg-gray-900 text-gray-400 hover:text-foreground"
+                                        }`}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Markdown Editor */}
@@ -310,10 +426,37 @@ function BlogWriteEditor() {
                                 {action.label}
                             </button>
                         ))}
+                        <button
+                            type="button"
+                            title="Insert image"
+                            aria-label="Insert image"
+                            onClick={() => imageInputRef.current?.click()}
+                            className="px-2.5 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                        >
+                            <ImagePlus className="w-4 h-4" />
+                        </button>
+                        <input
+                            ref={imageInputRef}
+                            type="file"
+                            accept={IMAGE_ACCEPT}
+                            multiple
+                            onChange={handleImagePick}
+                            className="hidden"
+                        />
+                        <button
+                            type="button"
+                            aria-pressed={showPreview}
+                            onClick={() => setShowPreview(!showPreview)}
+                            title={showPreview ? "Hide preview" : "Show preview"}
+                            className={`hidden lg:inline-flex items-center gap-1.5 ml-auto px-2.5 py-1.5 text-xs font-sans uppercase tracking-widest rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 ${showPreview ? "text-foreground" : "text-gray-400"}`}
+                        >
+                            {showPreview ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                            Preview
+                        </button>
                     </div>
 
-                    {/* WRITE / PREVIEW tabs */}
-                    <div className="flex border-b border-gray-200 dark:border-gray-700">
+                    {/* WRITE / PREVIEW tabs — narrow screens only; wide screens show both panes */}
+                    <div className="flex lg:hidden border-b border-gray-200 dark:border-gray-700">
                         <button
                             onClick={() => setTab("write")}
                             className={`flex-1 py-3 text-sm font-sans uppercase tracking-widest text-center transition-colors ${tab === "write"
@@ -334,110 +477,85 @@ function BlogWriteEditor() {
                         </button>
                     </div>
 
-                    {/* Editor / Preview area */}
-                    <div className="min-h-[400px]">
-                        {tab === "write" ? (
-                            <textarea
-                                ref={textareaRef}
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                                placeholder="Write your post in Markdown..."
-                                className="w-full h-[400px] px-6 py-5 bg-transparent text-base font-mono leading-relaxed resize-y focus:outline-none placeholder:text-gray-300 dark:placeholder:text-gray-600"
-                            />
-                        ) : (
-                            <div className="px-6 py-5">
-                                {previewContent.trim() ? (
-                                    <MarkdownRenderer content={previewContent} />
-                                ) : (
-                                    <p className="text-gray-400 italic">Nothing to preview yet.</p>
-                                )}
-                            </div>
-                        )}
+                    {/* Pane labels on wide screens. The row stays when the preview is closed,
+                        so the editor block keeps its height. */}
+                    <div className={`hidden lg:grid ${showPreview ? "grid-cols-2" : "grid-cols-1"} border-b border-gray-200 dark:border-gray-700 text-sm font-sans uppercase tracking-widest text-gray-400 text-center`}>
+                        <span className="py-3">Write</span>
+                        {showPreview && <span className="py-3 border-l border-gray-200 dark:border-gray-700">Preview</span>}
+                    </div>
+
+                    {/* Editor / Preview area. Both panes have one fixed height, so the block is
+                        the same size whichever of them is showing. */}
+                    <div className={`lg:grid ${showPreview ? "lg:grid-cols-2" : "lg:grid-cols-1"}`}>
+                        <textarea
+                            ref={textareaRef}
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            onPaste={handlePaste}
+                            onScroll={syncPreviewScroll}
+                            placeholder="Write your post in Markdown..."
+                            className={`${tab === "write" ? "block" : "hidden"} lg:block w-full h-[400px] lg:h-[640px] px-6 py-5 bg-transparent text-base font-mono leading-relaxed resize-none focus:outline-none placeholder:text-gray-300 dark:placeholder:text-gray-600`}
+                        />
+                        <div
+                            ref={previewRef}
+                            className={`${tab === "preview" ? "block" : "hidden"} ${showPreview ? "lg:block" : "lg:hidden"} h-[400px] lg:h-[640px] overflow-y-auto px-6 py-5 lg:border-l border-gray-200 dark:border-gray-700`}
+                        >
+                            {previewContent.trim() ? (
+                                <MarkdownRenderer content={previewContent} allowBlobUrls />
+                            ) : (
+                                <p className="text-gray-400 italic">Nothing to preview yet.</p>
+                            )}
+                        </div>
                     </div>
                 </div>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 font-sans break-keep">
+                    이미지는 본문에 붙여넣거나(Ctrl+V) 툴바의 이미지 버튼으로 넣습니다.
+                </p>
 
-                {/* Image Upload */}
+                {/* Thumbnail */}
                 <div className="mt-8 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
-                    <label className="block text-xs font-sans uppercase tracking-widest text-gray-400 mb-4">Attach Images</label>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleImageUpload}
-                        className="block w-full text-sm font-sans text-gray-500 file:mr-4 file:py-2 file:px-4 file:border file:border-gray-300 dark:file:border-gray-600 file:text-sm file:font-sans file:uppercase file:tracking-widest file:bg-transparent file:text-gray-600 dark:file:text-gray-400 hover:file:bg-gray-100 dark:hover:file:bg-gray-800 file:cursor-pointer file:transition-colors"
-                    />
-
-                    {/* Existing images (edit mode) */}
-                    {existingImages.length > 0 && (
-                        <div className="mt-4">
-                            <p className="text-xs font-sans uppercase tracking-widest text-gray-400 mb-2">Existing Images</p>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {existingImages.map((img, index) => (
-                                    <div key={`existing-${index}`} className="relative group border border-gray-100 dark:border-gray-700">
-                                        <img
-                                            src={img.url}
-                                            alt={img.name}
-                                            className="w-full h-24 object-cover"
-                                        />
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
-                                            <button
-                                                onClick={() => insertImageRef(img.name)}
-                                                title="Insert reference"
-                                                className="p-1.5 bg-white text-black text-xs font-sans rounded"
-                                            >
-                                                Insert
-                                            </button>
-                                            <button
-                                                onClick={() => removeExistingImage(index)}
-                                                title="Remove"
-                                                className="p-1.5 bg-red-500 text-white text-xs font-sans rounded"
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-                                        <p className="text-[10px] text-gray-400 truncate px-1 py-0.5 font-mono">{img.name}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* New images */}
-                    {imagePreviews.length > 0 && (
-                        <div className="mt-4">
-                            {existingImages.length > 0 && (
-                                <p className="text-xs font-sans uppercase tracking-widest text-gray-400 mb-2">New Images</p>
+                    <span className="block text-xs font-sans uppercase tracking-widest text-gray-400 mb-1">Thumbnail</span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 font-sans break-keep">
+                        글 목록에 표시되는 대표 이미지입니다. 지정하지 않으면 본문 이미지 중 하나가 자동으로 쓰입니다.
+                    </p>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+                        {/* The post list crops thumbnails to this 200x150 box on wide screens. */}
+                        <div className="w-[200px] h-[150px] shrink-0 rounded-sm overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                            {shownThumbnail ? (
+                                <img src={shownThumbnail} alt="Thumbnail" className="w-full h-full object-cover" />
+                            ) : (
+                                <span className="text-xs font-sans uppercase tracking-widest text-gray-400">None</span>
                             )}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {imagePreviews.map((preview, index) => (
-                                    <div key={`new-${index}`} className="relative group border border-gray-100 dark:border-gray-700">
-                                        <img
-                                            src={preview.url}
-                                            alt={preview.name}
-                                            className="w-full h-24 object-cover"
-                                        />
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
-                                            <button
-                                                onClick={() => insertImageRef(preview.name)}
-                                                title="Insert reference"
-                                                className="p-1.5 bg-white text-black text-xs font-sans rounded"
-                                            >
-                                                Insert
-                                            </button>
-                                            <button
-                                                onClick={() => removeNewImage(index)}
-                                                title="Remove"
-                                                className="p-1.5 bg-red-500 text-white text-xs font-sans rounded"
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-                                        <p className="text-[10px] text-gray-400 truncate px-1 py-0.5 font-mono">{preview.name}</p>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
-                    )}
+                        <div className="min-w-0">
+                            <p className="text-sm font-sans text-gray-600 dark:text-gray-400 mb-3 break-all">{thumbnailStatus}</p>
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => thumbnailInputRef.current?.click()}
+                                    className="text-sm font-sans uppercase tracking-widest border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                >
+                                    Choose Image
+                                </button>
+                                {canRemoveThumbnail && (
+                                    <button
+                                        type="button"
+                                        onClick={handleThumbnailRemove}
+                                        className="text-sm font-sans uppercase tracking-widest border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors"
+                                    >
+                                        Remove
+                                    </button>
+                                )}
+                            </div>
+                            <input
+                                ref={thumbnailInputRef}
+                                type="file"
+                                accept={IMAGE_ACCEPT}
+                                onChange={handleThumbnailPick}
+                                className="hidden"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Error message */}

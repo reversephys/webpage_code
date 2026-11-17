@@ -1,4 +1,5 @@
 import fs from "fs";
+import { isThumbnailFile } from "./post-editor";
 import path from "path";
 import { getTagsForPosts } from "./tags";
 import { stripInlineMarkdown, splitSentences } from "./excerpt";
@@ -102,7 +103,9 @@ function findThumbnail(folderPath: string, slug: string): string | null {
     if (!fs.existsSync(imagesDir)) return null;
 
     const files = fs.readdirSync(imagesDir);
-    const imageFile = files.find((f) =>
+    // A thumbnail the author picked wins; posts without one keep using
+    // whichever image the folder lists first.
+    const imageFile = files.find(isThumbnailFile) ?? files.find((f) =>
         /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(f)
     );
 

@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import PocketBase from "pocketbase";
+import { thumbnailFilename } from "@/lib/post-editor";
 import { verifyAuth, unauthorizedResponse } from "@/lib/auth-server";
 import { getValidatedExt, isAllowedImageBuffer } from "@/lib/image-validation";
 
@@ -114,12 +115,31 @@ export async function POST(request: NextRequest) {
             preparedImages.push({ buffer, newFilename });
         }
 
+        // Optional list thumbnail, saved under its own name so it stays apart
+        // from the body images.
+        const thumbnailFile = formData.get("thumbnail");
+        let thumbnail: { buffer: Buffer; filename: string } | null = null;
+        if (thumbnailFile instanceof File && thumbnailFile.size > 0) {
+            const ext = getValidatedExt(thumbnailFile.name);
+            const buffer = Buffer.from(await thumbnailFile.arrayBuffer());
+            if (!ext || !(await isAllowedImageBuffer(buffer))) {
+                return NextResponse.json(
+                    { error: `Unsupported thumbnail image: ${thumbnailFile.name}` },
+                    { status: 400 }
+                );
+            }
+            thumbnail = { buffer, filename: thumbnailFilename(ext) };
+        }
+
         // Create directories now that all images are known to be valid.
         fs.mkdirSync(folderPath, { recursive: true });
         fs.mkdirSync(path.join(folderPath, "images"), { recursive: true });
 
         for (const { buffer, newFilename } of preparedImages) {
             fs.writeFileSync(path.join(folderPath, "images", newFilename), buffer);
+        }
+        if (thumbnail) {
+            fs.writeFileSync(path.join(folderPath, "images", thumbnail.filename), thumbnail.buffer);
         }
 
         // Replace image references in markdown content

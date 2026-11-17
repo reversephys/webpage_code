@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { getValidatedExt, isAllowedImageBuffer } from "@/lib/image-validation";
+import { isThumbnailFile, thumbnailFilename } from "@/lib/post-editor";
 import PocketBase from "pocketbase";
 import { getPostFolderName, CONTENTS_DIR, getPostBySlug } from "@/lib/blog";
 import { verifyAuth, unauthorizedResponse } from "@/lib/auth-server";
@@ -51,6 +53,18 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ redirect: "/blog" }, { status: 200 });
         }
 
+        // Optional new list thumbnail; checked before anything is written.
+        const thumbnailFile = formData.get("thumbnail");
+        let thumbnail: { buffer: Buffer; filename: string } | null = null;
+        if (thumbnailFile instanceof File && thumbnailFile.size > 0) {
+            const ext = getValidatedExt(thumbnailFile.name);
+            const buffer = Buffer.from(await thumbnailFile.arrayBuffer());
+            if (!ext || !(await isAllowedImageBuffer(buffer))) {
+                return NextResponse.json({ error: `Unsupported thumbnail image: ${thumbnailFile.name}` }, { status: 400 });
+            }
+            thumbnail = { buffer, filename: thumbnailFilename(ext) };
+        }
+
         const folderName = getPostFolderName(slug);
         if (!folderName) {
             return NextResponse.json({ error: "Post not found." }, { status: 404 });
@@ -70,6 +84,17 @@ export async function POST(request: NextRequest) {
             if (fs.existsSync(imgPath)) {
                 fs.unlinkSync(imgPath);
             }
+        }
+
+        // Replace or remove the picked thumbnail. Each upload gets a new name, so the old
+        // file has to go first.
+        if (thumbnail || formData.get("removeThumbnail") === "true") {
+            for (const name of fs.readdirSync(imagesDir).filter(isThumbnailFile)) {
+                fs.unlinkSync(path.join(imagesDir, name));
+            }
+        }
+        if (thumbnail) {
+            fs.writeFileSync(path.join(imagesDir, thumbnail.filename), thumbnail.buffer);
         }
 
         // Process new images: save with UUID names and build rename mapping
