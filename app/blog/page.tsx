@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/AuthContext";
 import { Loader2, Search } from "lucide-react";
+import { displayTags } from "@/lib/utils";
 
 interface BlogPost {
     slug: string;
@@ -23,6 +24,8 @@ export default function BlogPage() {
     const [query, setQuery] = useState("");
     const [loading, setLoading] = useState(true);
     const { user } = useAuth();
+    const isMember = Number(user?.permission_group ?? 0) >= 3;
+    const tagsOf = (tag: string) => displayTags(tag, isMember).join(", ");
 
     const [visibleCount, setVisibleCount] = useState(10);
     const loaderRef = useRef<HTMLDivElement | null>(null);
@@ -137,17 +140,25 @@ export default function BlogPage() {
 
                                 {/* Content */}
                                 <div>
-                                    <div className="flex items-center gap-4 mb-2 text-xs tracking-[0.2em] uppercase font-sans">
+                                    {/* Date and author never wrap; tags take what is left on
+                                        desktop and drop to their own line on mobile. */}
+                                    <div className="flex flex-wrap md:flex-nowrap items-start gap-x-4 gap-y-1 mb-2 text-xs tracking-[0.2em] uppercase font-sans">
                                         {post.tag.includes('pinned') && (
-                                            <span className="text-red-500 font-bold flex items-center gap-1">
+                                            <span className="text-red-500 font-bold flex items-center gap-1 whitespace-nowrap">
                                                 📌 PINNED
                                             </span>
                                         )}
-                                        <span className="text-gray-400">{post.date}</span>
-                                        <span className="w-8 h-[1px] bg-gray-200 dark:bg-gray-700" />
-                                        <span className="text-gray-400">BY {post.authorName}</span>
-                                        <span className="w-8 h-[1px] bg-gray-200 dark:bg-gray-700" />
-                                        <span className="text-gray-400">{post.tag}</span>
+                                        <span className="flex items-center gap-4 whitespace-nowrap text-gray-400">
+                                            <span>{post.date}</span>
+                                            <span className="w-8 h-[1px] bg-gray-200 dark:bg-gray-700" />
+                                            <span>BY {post.authorName}</span>
+                                        </span>
+                                        {tagsOf(post.tag) && (
+                                            <>
+                                                <span className="hidden md:block w-8 h-[1px] mt-2 shrink-0 bg-gray-200 dark:bg-gray-700" />
+                                                <span className="text-gray-400 basis-full md:basis-auto md:min-w-0">{tagsOf(post.tag)}</span>
+                                            </>
+                                        )}
                                     </div>
 
                                     <Link href={`/blog/${post.slug}`}>

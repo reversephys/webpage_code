@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import NoticePostActions from "@/components/NoticePostActions";
 import { CommentsList } from "@/components/CommentsList";
+import { displayTags } from "@/lib/utils";
 
 interface NoticePostPageProps {
     params: Promise<{ slug: string }>;
@@ -25,6 +26,7 @@ export default async function NoticePostPage({ params }: NoticePostPageProps) {
     const user = await getServerUserFromCookie();
     const permGroup = user?.permission_group !== undefined ? Number(user.permission_group) : -1;
     const hasAccess = permGroup >= 3;
+    const shownTags = displayTags(tags, hasAccess);
 
     if (!isPublic && !hasAccess) {
         return (
@@ -57,12 +59,16 @@ export default async function NoticePostPage({ params }: NoticePostPageProps) {
                 <header className="mb-12 text-center">
                     <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mb-6 text-xs tracking-[0.2em] text-gray-400 uppercase font-sans">
                         <span>{post.date}</span>
-                        <span className="w-8 h-[1px] bg-gray-200 dark:bg-gray-700 hidden sm:inline-block" />
-                        <div className="flex flex-wrap gap-2">
-                            {tags.map(t => (
-                                <span key={t} className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-sm">{t}</span>
-                            ))}
-                        </div>
+                        {shownTags.length > 0 && (
+                            <>
+                                <span className="w-8 h-[1px] bg-gray-200 dark:bg-gray-700 hidden sm:inline-block" />
+                                <div className="flex flex-wrap gap-2">
+                                    {shownTags.map(t => (
+                                        <span key={t} className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-sm">{t}</span>
+                                    ))}
+                                </div>
+                            </>
+                        )}
                     </div>
                     <h1 className="text-4xl md:text-6xl font-bold leading-tight mb-8">
                         {post.title}

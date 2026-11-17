@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { getTagsForPosts } from "./tags";
+import { stripInlineMarkdown, splitSentences } from "./excerpt";
 
 export interface StaffPost {
     slug: string;
@@ -69,8 +70,8 @@ function extractExcerpt(content: string): string {
 
     if (bodyLines.length === 0) return "";
 
-    const fullText = bodyLines.join(" ");
-    const sentences = fullText.match(/[^.!?]+[.!?]+/g);
+    const fullText = stripInlineMarkdown(bodyLines.join(" "));
+    const sentences = splitSentences(fullText);
     if (!sentences) return fullText.slice(0, 200);
 
     if (sentences[0].length > 100) {
