@@ -11,7 +11,7 @@ interface MarkdownRendererProps {
 
 export function MarkdownRenderer({ content, small }: MarkdownRendererProps) {
     return (
-        <div className={`prose ${small ? 'prose-sm' : 'prose-lg'} dark:prose-invert mx-auto max-w-none`}>
+        <div className={`prose ${small ? 'prose-sm' : 'prose-lg'} dark:prose-invert mx-auto max-w-none prose-code:before:content-none prose-code:after:content-none prose-th:px-4 prose-td:px-4`}>
             <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
@@ -77,9 +77,15 @@ export function MarkdownRenderer({ content, small }: MarkdownRendererProps) {
                         );
                     },
                     table: ({ children }) => (
-                        <table className={`min-w-full border-collapse border border-gray-300 dark:border-gray-600 ${small ? 'my-3 text-[11px]' : 'my-6 text-base'}`}>
-                            {children}
-                        </table>
+                        // Wide tables scroll inside their own box instead of
+                        // pushing the whole page sideways on narrow screens.
+                        // The wrapper carries the margin prose gave the table
+                        // (2em of its font size) so spacing stays the same.
+                        <div className={`overflow-x-auto ${small ? 'my-[22px]' : 'my-8'}`}>
+                            <table className={`min-w-full my-0! border-collapse border border-gray-300 dark:border-gray-600 ${small ? 'text-[11px]' : 'text-base'}`}>
+                                {children}
+                            </table>
+                        </div>
                     ),
                 }}
             >
