@@ -3,7 +3,7 @@
 import { pb } from "@/lib/pocketbase";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Trash2, Plus, ExternalLink, Rss, Loader2, Search } from "lucide-react";
+import { Trash2, Plus, ExternalLink, Loader2, Search } from "lucide-react";
 import { useAuth } from "@/components/AuthContext";
 
 interface Article {
@@ -30,14 +30,18 @@ export default function NewsPage() {
     const [addingFeed, setAddingFeed] = useState(false);
 
     const [visibleCount, setVisibleCount] = useState(10);
+    // Articles whose image failed to load, so their thumbnail slot is dropped too.
+    const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
     const loaderRef = useRef<HTMLDivElement | null>(null);
 
     const isNewArticle = (dateStr: string) => {
         try {
             const date = new Date(dateStr);
-            const oneMonthAgo = new Date();
-            oneMonthAgo.setDate(oneMonthAgo.getDate() - 30); // 30 days ago
-            return date >= oneMonthAgo;
+            // Same 7-day window the Hot Issues list uses; at 30 days nearly
+            // every article on the page carried the badge.
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            return date >= oneWeekAgo;
         } catch {
             return false;
         }
@@ -220,33 +224,26 @@ export default function NewsPage() {
                                     const pubDateFormatted = article.isoDate || article.pubDate
                                         ? new Date(article.isoDate || article.pubDate).toLocaleDateString()
                                         : "";
+                                    // Most feeds ship no image; an empty box per article
+                                    // outweighed the articles themselves.
+                                    const imageUrl = article.imageUrl && !brokenImages.has(article.link) ? article.imageUrl : null;
 
                                     return (
                                         <article
                                             key={`${article.link}-${idx}`}
-                                            className="group grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6 items-start border-b border-gray-150 dark:border-gray-800 pb-8 last:border-b-0"
+                                            className={`group grid grid-cols-1 ${imageUrl ? 'md:grid-cols-[200px_1fr]' : ''} gap-6 items-start border-b border-gray-150 dark:border-gray-800 pb-8 last:border-b-0`}
                                         >
                                             {/* Left side: Thumbnail preview */}
-                                            <div className="w-full h-[150px] rounded-sm overflow-hidden bg-gray-50 dark:bg-neutral-800/50 flex items-center justify-center relative border border-gray-100 dark:border-neutral-800/80">
-                                                {article.imageUrl ? (
+                                            {imageUrl && (
+                                                <div className="w-full h-[150px] rounded-sm overflow-hidden bg-gray-50 dark:bg-neutral-800/50 border border-gray-100 dark:border-neutral-800/80">
                                                     <img
-                                                        src={article.imageUrl}
+                                                        src={imageUrl}
                                                         alt={article.title}
                                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                                        onError={(e) => {
-                                                            e.currentTarget.style.display = 'none';
-                                                            const parent = e.currentTarget.parentElement;
-                                                            if (parent) {
-                                                                const fallback = parent.querySelector('.fallback-icon');
-                                                                if (fallback) fallback.classList.remove('hidden');
-                                                            }
-                                                        }}
+                                                        onError={() => setBrokenImages((prev) => new Set(prev).add(article.link))}
                                                     />
-                                                ) : null}
-                                                <div className={`fallback-icon ${article.imageUrl ? 'hidden' : ''} text-gray-300 dark:text-neutral-700`}>
-                                                    <Rss className="w-8 h-8" />
                                                 </div>
-                                            </div>
+                                            )}
 
                                             {/* Right side: Content */}
                                             <div className="flex flex-col h-full justify-between">
