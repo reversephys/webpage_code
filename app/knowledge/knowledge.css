@@ -1,0 +1,187 @@
+/*
+ * The knowledge map's ring (/knowledge). The ring and its two status lines
+ * are built by lib/knowledge-ring.ts outside React, so they cannot carry
+ * Tailwind classes: this file styles those generated elements in the site's
+ * own terms (Inter for labels, the serif for a post title, the page's
+ * foreground and background). The rest of the page uses utilities.
+ *
+ * Everything is scoped under .kb.
+ */
+
+.kb {
+  --bg: var(--background);
+  --fg: var(--foreground);
+  --mute: #6b7280;
+  --rule: #e5e7eb;
+  /* Link ink by how far a link travels: same subject, same area, another
+     area on the same side, between the lab's own field and the others. */
+  --k0: 0.18;
+  --k1: 0.3;
+  --k2: 0.4;
+  --k3: 0.92;
+}
+
+@media (prefers-color-scheme: dark) {
+  .kb {
+    --mute: #9ca3af;
+    --rule: #1f2937;
+    --k0: 0.2;
+    --k1: 0.32;
+    --k2: 0.42;
+    --k3: 0.9;
+  }
+}
+
+/* ---- two status lines of fixed height: counts and a hint at rest, the
+   post, tag or subject under the pointer otherwise. The ring never moves. ---- */
+.kb .ring-status { height: 5.5rem; margin-top: 2rem; }
+.kb .ring-info { max-width: 40rem; margin: 0 auto; text-align: center; word-break: keep-all; }
+.kb .ring-info .l1 {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0 0.75rem;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.75rem;
+  line-height: 1.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+/* a post title, as the lists set it */
+.kb .ring-info .l1 b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-playfair-display, var(--font-playfair)), serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--fg);
+}
+.kb .ring-info .l1 .m { flex: none; }
+.kb .ring-info .l2 {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--mute);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.kb .ring-info .go, .kb .ring-info .x { display: none; }
+
+.kb .ringmap { position: relative; min-width: 0; }
+.kb .ring-svg { display: block; width: 100%; height: auto; overflow: visible; -webkit-tap-highlight-color: transparent; }
+.kb .ring-measure { position: absolute; left: -9999px; top: 0; width: 10px; height: 10px; visibility: hidden; }
+
+/* ---- the ring ---- */
+/* The measuring text gets the same font, so label widths come out right. */
+.kb .ring-svg text, .kb .ring-measure text { font-family: var(--font-inter), sans-serif; }
+.kb .ring-arc { fill: none; stroke: var(--fg); stroke-width: 1; }
+.kb .lnk { fill: none; stroke: var(--fg); stroke-width: 1; stroke-linecap: round; }
+.kb .lnk.c0 { stroke-opacity: var(--k0); }
+.kb .lnk.c1 { stroke-opacity: var(--k1); }
+.kb .lnk.c2 { stroke-opacity: var(--k2); }
+.kb .lnk.c3 { stroke-opacity: var(--k3); stroke-width: 1.25; }
+
+.kb .ring-svg .note { cursor: pointer; outline: none; text-decoration: none; }
+.kb .ring-svg .note .hit { fill: transparent; }
+.kb .ring-svg .note .dot { fill: var(--fg); }
+.kb .ring-svg .note .lab { fill: var(--fg); }
+/* the picked post: inverted, like the site's buttons on hover */
+.kb .ring-svg .note .inv { fill: var(--fg); opacity: 0; }
+.kb .ring-svg .note.hot .inv, .kb .ring-svg .note:focus-visible .inv { opacity: 1; }
+.kb .ring-svg .note.hot .lab, .kb .ring-svg .note:focus-visible .lab { fill: var(--bg); }
+
+.kb .ring-svg .sub { fill: var(--mute); cursor: pointer; }
+.kb .ring-svg .area-line { fill: none; stroke: var(--mute); stroke-width: 1; }
+.kb .ring-svg .divider { fill: none; stroke: var(--mute); stroke-width: 1; stroke-opacity: 0.55; }
+.kb .ring-svg .divider.sd { stroke-dasharray: 1 3; stroke-opacity: 0.8; }
+.kb .ring-svg .area { fill: var(--fg); cursor: pointer; letter-spacing: 0.16em; }
+.kb .ring-svg .sub:hover, .kb .ring-svg .sub.on { fill: var(--fg); }
+.kb .ring-svg .sub:focus-visible, .kb .ring-svg .area:focus-visible { outline: none; fill: var(--fg); text-decoration: underline; }
+
+.kb .ring-svg .hub { opacity: 0; pointer-events: none; cursor: pointer; }
+.kb .ring-svg .hub text { fill: var(--mute); paint-order: stroke; stroke: var(--bg); stroke-width: 5px; stroke-linejoin: round; }
+.kb .ring-svg .spk { fill: none; stroke: var(--fg); stroke-width: 1; stroke-dasharray: 1 3; stroke-linecap: round; stroke-opacity: 0; }
+
+.kb .ring-svg .lnk, .kb .ring-svg .note, .kb .ring-svg .hub, .kb .ring-svg .spk, .kb .ring-svg .sub,
+.kb .ring-svg .area, .kb .ring-svg .area-line, .kb .ring-svg .ring-arc, .kb .ring-svg .divider {
+  transition: opacity 0.12s, stroke-opacity 0.12s, fill 0.12s;
+}
+
+/* something picked: everything else steps back */
+.kb .ring-svg.dim .lnk { stroke-opacity: 0.045; }
+.kb .ring-svg.dim .lnk.on { stroke-opacity: 1; }
+.kb .ring-svg.dim .note { opacity: 0.26; }
+.kb .ring-svg.dim .note.on, .kb .ring-svg.dim .note.nb { opacity: 1; }
+.kb .ring-svg.dim .hub.on { opacity: 1; pointer-events: auto; }
+.kb .ring-svg.dim .hub.on text { fill: var(--fg); }
+.kb .ring-svg.dim .spk.on { stroke-opacity: 0.85; }
+.kb .ring-svg.dim .sub, .kb .ring-svg.dim .area, .kb .ring-svg.dim .area-line, .kb .ring-svg.dim .divider { opacity: 0.35; }
+.kb .ring-svg.dim .sub.on, .kb .ring-svg.dim .area.on { opacity: 1; fill: var(--fg); }
+.kb .ring-svg.dim .area-line.on { opacity: 1; }
+.kb .ring-svg.dim .ring-arc { opacity: 0.35; }
+.kb .ring-svg.dim .ring-arc.on { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kb .ring-svg .lnk, .kb .ring-svg .note, .kb .ring-svg .hub, .kb .ring-svg .spk, .kb .ring-svg .sub,
+  .kb .ring-svg .area, .kb .ring-svg .area-line, .kb .ring-svg .ring-arc, .kb .ring-svg .divider { transition: none; }
+}
+
+/* pan and zoom, only when the ring has outgrown the screen */
+.kb .ringmap .zoom { display: none; position: absolute; right: 0; top: 0; z-index: 2; }
+.kb .ringmap.zooms .zoom { display: flex; }
+.kb .ringmap.zooms .ring-svg { touch-action: none; cursor: grab; overflow: hidden; outline: 1px solid var(--rule); outline-offset: -1px; }
+.kb .ringmap.zooms-touch .ring-svg { touch-action: pan-y; }
+.kb .ringmap .zoom button {
+  min-width: 2.25rem;
+  height: 2rem;
+  margin-left: -1px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--mute);
+  background: var(--bg);
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+}
+.kb .ringmap .zoom button:hover { background: var(--fg); color: var(--bg); }
+
+/* phones: a tapped post's lines rise as a sheet from the bottom (the second
+   tap opens the post); at rest they stay above the ring */
+@media (max-width: 759px) {
+  .kb .ringmap { margin: 0 -8px; }
+  .kb .ring-status { height: 4.5rem; margin-top: 1.5rem; }
+  .kb .ring-info.open {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    max-width: none;
+    margin: 0;
+    padding: 1rem 3.25rem calc(1.25rem + env(safe-area-inset-bottom)) 1.5rem;
+    background: var(--bg);
+    border-top: 1px solid var(--rule);
+    text-align: left;
+  }
+  .kb .ring-info.open .l1 { justify-content: flex-start; flex-wrap: wrap; white-space: normal; line-height: 1.5rem; }
+  .kb .ring-info.open .l1 b { line-height: 1.35; }
+  .kb .ring-info.open .l2 { -webkit-line-clamp: 4; }
+  .kb .ring-info.open .go {
+    display: inline-block;
+    margin-top: 0.75rem;
+    padding-bottom: 0.15rem;
+    border-bottom: 1px solid var(--fg);
+    font-family: var(--font-inter), sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--fg);
+  }
+  .kb .ring-info.open .x { display: block; position: absolute; right: 0.5rem; top: 0.5rem; width: 2.25rem; height: 2.25rem; font-size: 1.125rem; text-align: center; color: var(--mute); }
+}
