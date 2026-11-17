@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { stripLeadingTitle } from "./markdown";
 
 const CONTENTS_DIR = path.join(process.cwd(), "..", "Contents", "PROJECTS");
 
@@ -20,5 +21,6 @@ export function getProjectsContent(): string | null {
         `![$1](/api/projects-image/$2)`
     );
 
-    return content;
+    // The page renders its own title, so a "# Projects" opener would repeat it.
+    return stripLeadingTitle(content, "Projects");
 }

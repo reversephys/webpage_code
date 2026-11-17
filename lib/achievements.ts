@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { stripLeadingTitle } from "./markdown";
 
 const CONTENTS_DIR = path.join(process.cwd(), "..", "Contents", "ACHIEVEMENTS");
 
@@ -20,5 +21,6 @@ export function getAchievementsContent(): string | null {
         `![$1](/api/achievements-image/$2)`
     );
 
-    return content;
+    // The page renders its own title, so a "# Achievements" opener would repeat it.
+    return stripLeadingTitle(content, "Achievements");
 }
