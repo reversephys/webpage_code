@@ -1,11 +1,20 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Inter, Eczar } from "next/font/google";
+import { Playfair, Playfair_Display, Inter, Eczar } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { ClientProviders } from "@/components/ClientProviders";
 
-const playfair = Playfair_Display({
+// Serif running text. Playfair is the Playfair Display design with an
+// optical-size axis, so at body sizes it is drawn with lower contrast.
+const playfair = Playfair({
   variable: "--font-playfair",
+  subsets: ["latin"],
+  axes: ["opsz"],
+});
+
+// Serif headings keep the display cut (see globals.css).
+const playfairDisplay = Playfair_Display({
+  variable: "--font-playfair-display",
   subsets: ["latin"],
 });
 
@@ -32,7 +41,7 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <body
-        className={`${playfair.variable} ${inter.variable} ${eczar.variable} antialiased selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black`}
+        className={`${playfair.variable} ${playfairDisplay.variable} ${inter.variable} ${eczar.variable} antialiased selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black`}
       >
         <ClientProviders>
           <Navbar />
