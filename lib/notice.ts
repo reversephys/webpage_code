@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { readStoredTitle } from "./post-title";
 import { getTagsForPosts } from "./tags";
 import { stripInlineMarkdown, splitSentences } from "./excerpt";
 
@@ -133,7 +134,7 @@ export async function getAllPosts(): Promise<NoticePost[]> {
 
         const post: NoticePost = {
             slug,
-            title: parsed.title.replace(/-/g, " "),
+            title: readStoredTitle(folderPath) ?? parsed.title.replace(/-/g, " "),
             date: formatDate(parsed.rawDate),
             rawDate: parsed.rawDate,
             tag: parsed.tag,
@@ -209,7 +210,7 @@ export async function getPostBySlug(slug: string): Promise<NoticePost | null> {
 
             return {
                 slug,
-                title: parsed.title.replace(/-/g, " "),
+                title: readStoredTitle(folderPath) ?? parsed.title.replace(/-/g, " "),
                 date: formatDate(parsed.rawDate),
                 rawDate: parsed.rawDate,
                 tag,
